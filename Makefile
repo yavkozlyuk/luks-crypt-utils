@@ -16,7 +16,7 @@ CC            = gcc
 CXX           = g++
 DEFINES       = 
 CFLAGS        = -pipe -O2 -Wall -W -fPIC $(DEFINES)
-CXXFLAGS      = -pipe -O2 -std=gnu++11 -Wall -W -fPIC $(DEFINES) -g -O0
+CXXFLAGS      = -pipe -O2 -std=gnu++11 -Wall -W -fPIC $(DEFINES)
 INCPATH       = -I. -I/usr/lib/x86_64-linux-gnu/qt5/mkspecs/linux-g++
 QMAKE         = /usr/lib/qt5/bin/qmake
 DEL_FILE      = rm -f
@@ -52,23 +52,23 @@ OBJECTS_DIR   = ./
 
 ####### Files
 
-SOURCES       = afutils.cpp \
-		cipher.cpp \
-		device.cpp \
-		hashfunction.cpp \
-		ioutils.cpp \
-		key.cpp \
-		logger.cpp \
-		luks-crypt-utils.cpp \
-		luksactions.cpp \
-		luksdevice.cpp \
-		lukspartitionheader.cpp \
-		luksstorage.cpp \
-		opensslcryptoprovider.cpp \
-		pbkdf.cpp \
-		random.cpp \
-		storagekey.cpp \
-		utils.cpp 
+SOURCES       = src/afutils.cpp \
+		src/cipher.cpp \
+		src/device.cpp \
+		src/hashfunction.cpp \
+		src/ioutils.cpp \
+		src/key.cpp \
+		src/logger.cpp \
+		src/luks-crypt-utils.cpp \
+		src/luksactions.cpp \
+		src/luksdevice.cpp \
+		src/lukspartitionheader.cpp \
+		src/luksstorage.cpp \
+		src/opensslcryptoprovider.cpp \
+		src/pbkdf.cpp \
+		src/random.cpp \
+		src/storagekey.cpp \
+		src/utils.cpp 
 OBJECTS       = afutils.o \
 		cipher.o \
 		device.o \
@@ -114,42 +114,42 @@ DIST          = Makefile \
 		/usr/lib/x86_64-linux-gnu/qt5/mkspecs/features/exceptions.prf \
 		/usr/lib/x86_64-linux-gnu/qt5/mkspecs/features/yacc.prf \
 		/usr/lib/x86_64-linux-gnu/qt5/mkspecs/features/lex.prf \
-		luks-crypt-utils.pro afutils.h \
-		bitops.h \
-		cipher.h \
-		config.h \
-		device.h \
-		hashfunction.h \
-		ioutils.h \
-		key.h \
-		logger.h \
-		luks-crypt-utils.h \
-		luksactions.h \
-		luksconstants.h \
-		luksdevice.h \
-		lukspartitionheader.h \
-		luksstorage.h \
-		opensslcryptoprovider.h \
-		pbkdf.h \
-		random.h \
-		storagekey.h \
-		utils.h afutils.cpp \
-		cipher.cpp \
-		device.cpp \
-		hashfunction.cpp \
-		ioutils.cpp \
-		key.cpp \
-		logger.cpp \
-		luks-crypt-utils.cpp \
-		luksactions.cpp \
-		luksdevice.cpp \
-		lukspartitionheader.cpp \
-		luksstorage.cpp \
-		opensslcryptoprovider.cpp \
-		pbkdf.cpp \
-		random.cpp \
-		storagekey.cpp \
-		utils.cpp
+		luks-crypt-utils.pro src/afutils.h \
+		src/bitops.h \
+		src/cipher.h \
+		src/config.h \
+		src/device.h \
+		src/hashfunction.h \
+		src/ioutils.h \
+		src/key.h \
+		src/logger.h \
+		src/luks-crypt-utils.h \
+		src/luksactions.h \
+		src/luksconstants.h \
+		src/luksdevice.h \
+		src/lukspartitionheader.h \
+		src/luksstorage.h \
+		src/opensslcryptoprovider.h \
+		src/pbkdf.h \
+		src/random.h \
+		src/storagekey.h \
+		src/utils.h src/afutils.cpp \
+		src/cipher.cpp \
+		src/device.cpp \
+		src/hashfunction.cpp \
+		src/ioutils.cpp \
+		src/key.cpp \
+		src/logger.cpp \
+		src/luks-crypt-utils.cpp \
+		src/luksactions.cpp \
+		src/luksdevice.cpp \
+		src/lukspartitionheader.cpp \
+		src/luksstorage.cpp \
+		src/opensslcryptoprovider.cpp \
+		src/pbkdf.cpp \
+		src/random.cpp \
+		src/storagekey.cpp \
+		src/utils.cpp
 QMAKE_TARGET  = luks-crypt-utils
 DESTDIR       = 
 TARGET        = luks-crypt-utils
@@ -261,176 +261,176 @@ compiler_clean:
 
 ####### Compile
 
-afutils.o: afutils.cpp afutils.h \
-		bitops.h \
-		hashfunction.h \
-		luksconstants.h \
-		config.h \
-		utils.h \
-		random.h
-	$(CXX) -c $(CXXFLAGS) $(INCPATH) -o afutils.o afutils.cpp
+afutils.o: src/afutils.cpp src/afutils.h \
+		src/bitops.h \
+		src/hashfunction.h \
+		src/luksconstants.h \
+		src/config.h \
+		src/utils.h \
+		src/random.h
+	$(CXX) -c $(CXXFLAGS) $(INCPATH) -o afutils.o src/afutils.cpp
 
-cipher.o: cipher.cpp cipher.h \
-		bitops.h \
-		hashfunction.h \
-		luksconstants.h \
-		config.h \
-		utils.h \
-		afutils.h
-	$(CXX) -c $(CXXFLAGS) $(INCPATH) -o cipher.o cipher.cpp
+cipher.o: src/cipher.cpp src/cipher.h \
+		src/bitops.h \
+		src/hashfunction.h \
+		src/luksconstants.h \
+		src/config.h \
+		src/utils.h \
+		src/afutils.h
+	$(CXX) -c $(CXXFLAGS) $(INCPATH) -o cipher.o src/cipher.cpp
 
-device.o: device.cpp device.h
-	$(CXX) -c $(CXXFLAGS) $(INCPATH) -o device.o device.cpp
+device.o: src/device.cpp src/device.h
+	$(CXX) -c $(CXXFLAGS) $(INCPATH) -o device.o src/device.cpp
 
-hashfunction.o: hashfunction.cpp hashfunction.h \
-		utils.h \
-		afutils.h
-	$(CXX) -c $(CXXFLAGS) $(INCPATH) -o hashfunction.o hashfunction.cpp
+hashfunction.o: src/hashfunction.cpp src/hashfunction.h \
+		src/utils.h \
+		src/afutils.h
+	$(CXX) -c $(CXXFLAGS) $(INCPATH) -o hashfunction.o src/hashfunction.cpp
 
-ioutils.o: ioutils.cpp ioutils.h \
-		utils.h \
-		afutils.h
-	$(CXX) -c $(CXXFLAGS) $(INCPATH) -o ioutils.o ioutils.cpp
+ioutils.o: src/ioutils.cpp src/ioutils.h \
+		src/utils.h \
+		src/afutils.h
+	$(CXX) -c $(CXXFLAGS) $(INCPATH) -o ioutils.o src/ioutils.cpp
 
-key.o: key.cpp key.h \
-		ioutils.h \
-		logger.h \
-		luksconstants.h \
-		config.h \
-		utils.h \
-		afutils.h
-	$(CXX) -c $(CXXFLAGS) $(INCPATH) -o key.o key.cpp
+key.o: src/key.cpp src/key.h \
+		src/ioutils.h \
+		src/logger.h \
+		src/luksconstants.h \
+		src/config.h \
+		src/utils.h \
+		src/afutils.h
+	$(CXX) -c $(CXXFLAGS) $(INCPATH) -o key.o src/key.cpp
 
-logger.o: logger.cpp logger.h \
-		luksconstants.h \
-		config.h \
-		utils.h \
-		afutils.h
-	$(CXX) -c $(CXXFLAGS) $(INCPATH) -o logger.o logger.cpp
+logger.o: src/logger.cpp src/logger.h \
+		src/luksconstants.h \
+		src/config.h \
+		src/utils.h \
+		src/afutils.h
+	$(CXX) -c $(CXXFLAGS) $(INCPATH) -o logger.o src/logger.cpp
 
-luks-crypt-utils.o: luks-crypt-utils.cpp luks-crypt-utils.h \
-		luksactions.h \
-		luksdevice.h \
-		storagekey.h \
-		key.h \
-		lukspartitionheader.h \
-		luksconstants.h \
-		config.h \
-		luksstorage.h \
-		cipher.h \
-		bitops.h \
-		hashfunction.h \
-		logger.h \
-		random.h \
-		utils.h \
-		afutils.h
-	$(CXX) -c $(CXXFLAGS) $(INCPATH) -o luks-crypt-utils.o luks-crypt-utils.cpp
+luks-crypt-utils.o: src/luks-crypt-utils.cpp src/luks-crypt-utils.h \
+		src/luksactions.h \
+		src/luksdevice.h \
+		src/storagekey.h \
+		src/key.h \
+		src/lukspartitionheader.h \
+		src/luksconstants.h \
+		src/config.h \
+		src/luksstorage.h \
+		src/cipher.h \
+		src/bitops.h \
+		src/hashfunction.h \
+		src/logger.h \
+		src/random.h \
+		src/utils.h \
+		src/afutils.h
+	$(CXX) -c $(CXXFLAGS) $(INCPATH) -o luks-crypt-utils.o src/luks-crypt-utils.cpp
 
-luksactions.o: luksactions.cpp luksactions.h \
-		luksdevice.h \
-		storagekey.h \
-		key.h \
-		lukspartitionheader.h \
-		luksconstants.h \
-		config.h \
-		luksstorage.h \
-		cipher.h \
-		bitops.h \
-		hashfunction.h \
-		logger.h \
-		utils.h \
-		afutils.h \
-		pbkdf.h
-	$(CXX) -c $(CXXFLAGS) $(INCPATH) -o luksactions.o luksactions.cpp
+luksactions.o: src/luksactions.cpp src/luksactions.h \
+		src/luksdevice.h \
+		src/storagekey.h \
+		src/key.h \
+		src/lukspartitionheader.h \
+		src/luksconstants.h \
+		src/config.h \
+		src/luksstorage.h \
+		src/cipher.h \
+		src/bitops.h \
+		src/hashfunction.h \
+		src/logger.h \
+		src/utils.h \
+		src/afutils.h \
+		src/pbkdf.h
+	$(CXX) -c $(CXXFLAGS) $(INCPATH) -o luksactions.o src/luksactions.cpp
 
-luksdevice.o: luksdevice.cpp luksdevice.h \
-		storagekey.h \
-		key.h \
-		lukspartitionheader.h \
-		luksconstants.h \
-		config.h \
-		luksstorage.h \
-		cipher.h \
-		bitops.h \
-		hashfunction.h \
-		pbkdf.h \
-		logger.h \
-		random.h \
-		utils.h \
-		afutils.h \
-		opensslcryptoprovider.h \
-		ioutils.h
-	$(CXX) -c $(CXXFLAGS) $(INCPATH) -o luksdevice.o luksdevice.cpp
+luksdevice.o: src/luksdevice.cpp src/luksdevice.h \
+		src/storagekey.h \
+		src/key.h \
+		src/lukspartitionheader.h \
+		src/luksconstants.h \
+		src/config.h \
+		src/luksstorage.h \
+		src/cipher.h \
+		src/bitops.h \
+		src/hashfunction.h \
+		src/pbkdf.h \
+		src/logger.h \
+		src/random.h \
+		src/utils.h \
+		src/afutils.h \
+		src/opensslcryptoprovider.h \
+		src/ioutils.h
+	$(CXX) -c $(CXXFLAGS) $(INCPATH) -o luksdevice.o src/luksdevice.cpp
 
-lukspartitionheader.o: lukspartitionheader.cpp lukspartitionheader.h \
-		luksconstants.h \
-		config.h \
-		storagekey.h \
-		key.h \
-		utils.h \
-		afutils.h \
-		logger.h \
-		hashfunction.h \
-		random.h \
-		opensslcryptoprovider.h
-	$(CXX) -c $(CXXFLAGS) $(INCPATH) -o lukspartitionheader.o lukspartitionheader.cpp
+lukspartitionheader.o: src/lukspartitionheader.cpp src/lukspartitionheader.h \
+		src/luksconstants.h \
+		src/config.h \
+		src/storagekey.h \
+		src/key.h \
+		src/utils.h \
+		src/afutils.h \
+		src/logger.h \
+		src/hashfunction.h \
+		src/random.h \
+		src/opensslcryptoprovider.h
+	$(CXX) -c $(CXXFLAGS) $(INCPATH) -o lukspartitionheader.o src/lukspartitionheader.cpp
 
-luksstorage.o: luksstorage.cpp luksstorage.h \
-		cipher.h \
-		bitops.h \
-		hashfunction.h \
-		luksconstants.h \
-		config.h \
-		key.h
-	$(CXX) -c $(CXXFLAGS) $(INCPATH) -o luksstorage.o luksstorage.cpp
+luksstorage.o: src/luksstorage.cpp src/luksstorage.h \
+		src/cipher.h \
+		src/bitops.h \
+		src/hashfunction.h \
+		src/luksconstants.h \
+		src/config.h \
+		src/key.h
+	$(CXX) -c $(CXXFLAGS) $(INCPATH) -o luksstorage.o src/luksstorage.cpp
 
-opensslcryptoprovider.o: opensslcryptoprovider.cpp opensslcryptoprovider.h \
-		key.h \
-		lukspartitionheader.h \
-		luksconstants.h \
-		config.h \
-		storagekey.h \
-		utils.h \
-		afutils.h
-	$(CXX) -c $(CXXFLAGS) $(INCPATH) -o opensslcryptoprovider.o opensslcryptoprovider.cpp
+opensslcryptoprovider.o: src/opensslcryptoprovider.cpp src/opensslcryptoprovider.h \
+		src/key.h \
+		src/lukspartitionheader.h \
+		src/luksconstants.h \
+		src/config.h \
+		src/storagekey.h \
+		src/utils.h \
+		src/afutils.h
+	$(CXX) -c $(CXXFLAGS) $(INCPATH) -o opensslcryptoprovider.o src/opensslcryptoprovider.cpp
 
-pbkdf.o: pbkdf.cpp pbkdf.h \
-		logger.h \
-		luksconstants.h \
-		config.h \
-		luksdevice.h \
-		storagekey.h \
-		key.h \
-		lukspartitionheader.h \
-		luksstorage.h \
-		cipher.h \
-		bitops.h \
-		hashfunction.h \
-		utils.h \
-		afutils.h
-	$(CXX) -c $(CXXFLAGS) $(INCPATH) -o pbkdf.o pbkdf.cpp
+pbkdf.o: src/pbkdf.cpp src/pbkdf.h \
+		src/logger.h \
+		src/luksconstants.h \
+		src/config.h \
+		src/luksdevice.h \
+		src/storagekey.h \
+		src/key.h \
+		src/lukspartitionheader.h \
+		src/luksstorage.h \
+		src/cipher.h \
+		src/bitops.h \
+		src/hashfunction.h \
+		src/utils.h \
+		src/afutils.h
+	$(CXX) -c $(CXXFLAGS) $(INCPATH) -o pbkdf.o src/pbkdf.cpp
 
-random.o: random.cpp random.h
-	$(CXX) -c $(CXXFLAGS) $(INCPATH) -o random.o random.cpp
+random.o: src/random.cpp src/random.h
+	$(CXX) -c $(CXXFLAGS) $(INCPATH) -o random.o src/random.cpp
 
-storagekey.o: storagekey.cpp storagekey.h \
-		key.h \
-		utils.h \
-		afutils.h \
-		random.h
-	$(CXX) -c $(CXXFLAGS) $(INCPATH) -o storagekey.o storagekey.cpp
+storagekey.o: src/storagekey.cpp src/storagekey.h \
+		src/key.h \
+		src/utils.h \
+		src/afutils.h \
+		src/random.h
+	$(CXX) -c $(CXXFLAGS) $(INCPATH) -o storagekey.o src/storagekey.cpp
 
-utils.o: utils.cpp utils.h \
-		afutils.h \
-		bitops.h \
-		luksconstants.h \
-		config.h \
-		opensslcryptoprovider.h \
-		key.h \
-		lukspartitionheader.h \
-		storagekey.h \
-		logger.h
-	$(CXX) -c $(CXXFLAGS) $(INCPATH) -o utils.o utils.cpp
+utils.o: src/utils.cpp src/utils.h \
+		src/afutils.h \
+		src/bitops.h \
+		src/luksconstants.h \
+		src/config.h \
+		src/opensslcryptoprovider.h \
+		src/key.h \
+		src/lukspartitionheader.h \
+		src/storagekey.h \
+		src/logger.h
+	$(CXX) -c $(CXXFLAGS) $(INCPATH) -o utils.o src/utils.cpp
 
 ####### Install
 
