@@ -1,14 +1,15 @@
 #include "cipher.h"
 #include "luksconstants.h"
 #include "utils.h"
-Cipher::Cipher()
-{
+#include "logger.h"
+#include "opensslcryptoprovider.h"
+Cipher::Cipher() {
+
     this->hd_enc = EVP_CIPHER_CTX_new();
     this->hd_dec = EVP_CIPHER_CTX_new();
 }
 
-Cipher::~Cipher()
-{
+Cipher::~Cipher() {
     if (this->hd_enc) {
         EVP_CIPHER_CTX_free(this->hd_enc);
         this->hd_enc = NULL;
@@ -18,8 +19,8 @@ Cipher::~Cipher()
         this->hd_dec = NULL;
     }
 }
-int Cipher::init(const char *name, const char *mode, const unsigned char *key, size_t keyLength)
-{
+
+int Cipher::init(const char *name, const char *mode, const unsigned char *key, size_t keyLength) {
     int r;
     char cipherName[256];
     const EVP_CIPHER *type;
@@ -35,11 +36,11 @@ int Cipher::init(const char *name, const char *mode, const unsigned char *key, s
     }
     if (r < 0 || r >= (int) sizeof(cipherName))
         return -EINVAL;
-
-    OpenSSL_add_all_ciphers();
+     OpenSSLCryptoProvider::initProvider();
+    //OpenSSL_add_all_ciphers();
     type = EVP_get_cipherbyname(cipherName);
     if (!type) {
-        printf("Can not get %s cipher [openssl-evp]", cipherName);
+        Logger::error("Can not get %s cipher [openssl-evp]", cipherName);
         return -ENOENT;
     }
 
@@ -52,7 +53,8 @@ int Cipher::init(const char *name, const char *mode, const unsigned char *key, s
     if (!this->hd_enc || !this->hd_dec)
         return -EINVAL;
 
-    if (EVP_EncryptInit_ex(this->hd_enc, type, NULL, key, NULL) != 1 || EVP_DecryptInit_ex(this->hd_dec, type, NULL, key, NULL) != 1) {
+    if (EVP_EncryptInit_ex(this->hd_enc, type, NULL, key, NULL) != 1 ||
+        EVP_DecryptInit_ex(this->hd_dec, type, NULL, key, NULL) != 1) {
         return -EINVAL;
     }
 
@@ -63,8 +65,8 @@ int Cipher::init(const char *name, const char *mode, const unsigned char *key, s
 }
 
 
-int Cipher::encrypt(const unsigned char *in, unsigned char *out, size_t length, const unsigned char *iv, size_t iv_length)
-{
+int
+Cipher::encrypt(const unsigned char *in, unsigned char *out, size_t length, const unsigned char *iv, size_t iv_length) {
     int len;
 
     if (this->ivLength != iv_length)
@@ -83,8 +85,8 @@ int Cipher::encrypt(const unsigned char *in, unsigned char *out, size_t length, 
 }
 
 
-int Cipher::decrypt(const unsigned char  *in, unsigned char * out, size_t length, const unsigned char *iv, size_t iv_length)
-{
+int
+Cipher::decrypt(const unsigned char *in, unsigned char *out, size_t length, const unsigned char *iv, size_t iv_length) {
     int len;
 
     if (this->ivLength != iv_length)
@@ -102,8 +104,7 @@ int Cipher::decrypt(const unsigned char  *in, unsigned char * out, size_t length
     return 0;
 }
 
-const CipherAlgorithm *Cipher::_getAlg(const char *name, const char *mode)
-{
+const CipherAlgorithm *Cipher::_getAlg(const char *name, const char *mode) {
     int i = 0;
 
     while (name && cipher_algs[i].name) {
@@ -127,7 +128,8 @@ int Cipher::cipherIVSize(const char *name, const char *mode) {
     return ca->blocksize;
 }
 
-int Cipher::sectorIVInit(struct SectorIV *ctx, const char *cipherName, const char *mode_name, const char *iv_name, const unsigned char * key, size_t keyLength, size_t sector_size) {
+int Cipher::sectorIVInit(struct SectorIV *ctx, const char *cipherName, const char *mode_name, const char *iv_name,
+                         const unsigned char *key, size_t keyLength, size_t sector_size) {
     int r;
 
     memset(ctx, 0, sizeof(*ctx));
@@ -216,60 +218,58 @@ int Cipher::sectorIVInit(struct SectorIV *ctx, const char *cipherName, const cha
     } else {
         return -ENOENT;
     }
-    ctx->iv = (unsigned char *)malloc(ctx->ivSize);
+    ctx->iv = (unsigned char *) malloc(ctx->ivSize);
     if (!ctx->iv) {
         return -ENOMEM;
     }
     return 0;
 }
 
-int Cipher::sectorIVGenerate(struct SectorIV *ctx, uint64_t sector)
-{
+int Cipher::sectorIVGenerate(struct SectorIV *ctx, uint64_t sector) {
     uint64_t val;
 
     switch (ctx->type) {
-    case IV_NONE:
-        break;
-    case IV_NULL:
-        memset(ctx->iv, 0, ctx->ivSize);
-        break;
-    case IV_PLAIN:
-        memset(ctx->iv, 0, ctx->ivSize);
-        *(uint32_t*) ctx->iv = cpu_to_le32(sector & 0xffffffff);
-        break;
-    case IV_PLAIN64:
-        memset(ctx->iv, 0, ctx->ivSize);
-        *(uint64_t*) ctx->iv = cpu_to_le64(sector);
-        break;
-    case IV_PLAIN64BE:
-        memset(ctx->iv, 0, ctx->ivSize);
-        *(uint64_t*) &ctx->iv[ctx->ivSize - sizeof(uint64_t)] = cpu_to_be64(sector);
-        break;
-    case IV_ESSIV:
-        memset(ctx->iv, 0, ctx->ivSize);
-        *(uint64_t*) ctx->iv = cpu_to_le64(sector);
-        return ctx->cipher->encrypt(ctx->iv, ctx->iv, ctx->ivSize,NULL, 0);
-        break;
-    case IV_BENBI:
-        memset(ctx->iv, 0, ctx->ivSize);
-        val = cpu_to_be64((sector << ctx->shift) + 1);
-        memcpy(ctx->iv + ctx->ivSize - sizeof(val), &val, sizeof(val));
-        break;
-    case IV_EBOIV:
-        memset(ctx->iv, 0, ctx->ivSize);
-        *(uint64_t*) ctx->iv = cpu_to_le64(sector << ctx->shift);
-        return ctx->cipher->encrypt(ctx->iv, ctx->iv, ctx->ivSize,
-                                    NULL, 0);
-        break;
-    default:
-        return -EINVAL;
+        case IV_NONE:
+            break;
+        case IV_NULL:
+            memset(ctx->iv, 0, ctx->ivSize);
+            break;
+        case IV_PLAIN:
+            memset(ctx->iv, 0, ctx->ivSize);
+            *(uint32_t *) ctx->iv = cpu_to_le32(sector & 0xffffffff);
+            break;
+        case IV_PLAIN64:
+            memset(ctx->iv, 0, ctx->ivSize);
+            *(uint64_t *) ctx->iv = cpu_to_le64(sector);
+            break;
+        case IV_PLAIN64BE:
+            memset(ctx->iv, 0, ctx->ivSize);
+            *(uint64_t *) &ctx->iv[ctx->ivSize - sizeof(uint64_t)] = cpu_to_be64(sector);
+            break;
+        case IV_ESSIV:
+            memset(ctx->iv, 0, ctx->ivSize);
+            *(uint64_t *) ctx->iv = cpu_to_le64(sector);
+            return ctx->cipher->encrypt(ctx->iv, ctx->iv, ctx->ivSize, NULL, 0);
+            break;
+        case IV_BENBI:
+            memset(ctx->iv, 0, ctx->ivSize);
+            val = cpu_to_be64((sector << ctx->shift) + 1);
+            memcpy(ctx->iv + ctx->ivSize - sizeof(val), &val, sizeof(val));
+            break;
+        case IV_EBOIV:
+            memset(ctx->iv, 0, ctx->ivSize);
+            *(uint64_t *) ctx->iv = cpu_to_le64(sector << ctx->shift);
+            return ctx->cipher->encrypt(ctx->iv, ctx->iv, ctx->ivSize,
+                                        NULL, 0);
+            break;
+        default:
+            return -EINVAL;
     }
 
     return 0;
 }
 
-void Cipher::sectorIVDestroy(struct SectorIV * ctx)
-{
+void Cipher::sectorIVDestroy(struct SectorIV *ctx) {
     if (ctx->type == SectorIVType::IV_ESSIV || ctx->type == SectorIVType::IV_EBOIV)
         ctx->cipher.reset();
 
@@ -278,6 +278,6 @@ void Cipher::sectorIVDestroy(struct SectorIV * ctx)
         free(ctx->iv);
     }
 
-    Utils::safeMemzero(ctx,sizeof(*ctx));
+    Utils::safeMemzero(ctx, sizeof(*ctx));
 }
 

@@ -5,19 +5,13 @@ LuksStorage::LuksStorage() {
 }
 
 LuksStorage::~LuksStorage() {
-
     Cipher::sectorIVDestroy(&this->cipherIV);
-
     if (this->cipher) {
         delete cipher;
-        //crypt_cipher_destroy(ctx->cipher);
     }
-
-    //memset(ctx, 0, sizeof(*ctx));
-    //free(ctx);
 }
 
-int LuksStorage::init(size_t sector_size, const char *cipher, const char *cipher_mode, Key* key) {
+int LuksStorage::init(size_t sector_size, const char *cipher, const char *cipher_mode, Key *key) {
     char mode_name[64];
     char *cipher_iv = NULL;
     int r = -EIO;
@@ -41,8 +35,9 @@ int LuksStorage::init(size_t sector_size, const char *cipher, const char *cipher
         return r;
     }
 
-    r = Cipher::sectorIVInit(&this->cipherIV, cipher, mode_name, cipher_iv, key->getKey(), key->getKeySize(), sector_size);
-    if (r) {		//todo destroy
+    r = Cipher::sectorIVInit(&this->cipherIV, cipher, mode_name, cipher_iv, key->getKey(), key->getKeySize(),
+                             sector_size);
+    if (r) {        //todo destroy
         //crypt_storage_destroy(s);
         return r;
     }
@@ -61,7 +56,8 @@ int LuksStorage::encrypt(uint64_t sector, size_t count, unsigned char *buffer) {
         r = Cipher::sectorIVGenerate(&this->cipherIV, sector + i);
         if (r)
             break;
-        r = this->cipher->encrypt(&buffer[i * SECTOR_SIZE], &buffer[i * SECTOR_SIZE], SECTOR_SIZE, this->cipherIV.iv, this->cipherIV.ivSize);
+        r = this->cipher->encrypt(&buffer[i * SECTOR_SIZE], &buffer[i * SECTOR_SIZE], SECTOR_SIZE, this->cipherIV.iv,
+                                  this->cipherIV.ivSize);
         if (r)
             break;
     }
@@ -91,13 +87,11 @@ int LuksStorage::decrypt(uint64_t iv_offset, uint64_t length, unsigned char *buf
     return r;
 }
 
-size_t LuksStorage::getSectorSize() const
-{
+size_t LuksStorage::getSectorSize() const {
     return sectorSize;
 }
 
-void LuksStorage::setSectorSize(const size_t &value)
-{
+void LuksStorage::setSectorSize(const size_t &value) {
     sectorSize = value;
 }
 

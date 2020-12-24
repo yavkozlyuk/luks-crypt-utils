@@ -2,7 +2,7 @@
 #ifndef CONFIG_H
 #define CONFIG_H
 
-
+#define OPENSSL_LOAD_CONF
 #define PACKAGE "luks-crypt-utils"
 /* Define to the full name of this package. */
 #define PACKAGE_NAME "luks-crypt-utils"
@@ -36,7 +36,6 @@
 
 /* Default PBKDF algorithm (pbkdf2 or argon2i/argon2id) for LUKS2 */
 #define DEFAULT_LUKS2_PBKDF "argon2i"
-
 
 
 #endif // CONFIG_H

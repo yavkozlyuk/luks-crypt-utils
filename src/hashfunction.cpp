@@ -1,11 +1,11 @@
 #include "hashfunction.h"
 #include "utils.h"
+
 HashFunction::HashFunction() {
 
 }
 
-HashFunction::~HashFunction()
-{
+HashFunction::~HashFunction() {
     if (this->md) {
         EVP_MD_CTX_free(this->md);
         this->md = NULL;

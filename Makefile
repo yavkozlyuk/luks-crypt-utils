@@ -54,7 +54,6 @@ OBJECTS_DIR   = ./
 
 SOURCES       = src/afutils.cpp \
 		src/cipher.cpp \
-		src/device.cpp \
 		src/hashfunction.cpp \
 		src/ioutils.cpp \
 		src/key.cpp \
@@ -71,7 +70,6 @@ SOURCES       = src/afutils.cpp \
 		src/utils.cpp 
 OBJECTS       = afutils.o \
 		cipher.o \
-		device.o \
 		hashfunction.o \
 		ioutils.o \
 		key.o \
@@ -118,7 +116,6 @@ DIST          = Makefile \
 		src/bitops.h \
 		src/cipher.h \
 		src/config.h \
-		src/device.h \
 		src/hashfunction.h \
 		src/ioutils.h \
 		src/key.h \
@@ -135,7 +132,6 @@ DIST          = Makefile \
 		src/storagekey.h \
 		src/utils.h src/afutils.cpp \
 		src/cipher.cpp \
-		src/device.cpp \
 		src/hashfunction.cpp \
 		src/ioutils.cpp \
 		src/key.cpp \
@@ -278,9 +274,6 @@ cipher.o: src/cipher.cpp src/cipher.h \
 		src/utils.h \
 		src/afutils.h
 	$(CXX) -c $(CXXFLAGS) $(INCPATH) -o cipher.o src/cipher.cpp
-
-device.o: src/device.cpp src/device.h
-	$(CXX) -c $(CXXFLAGS) $(INCPATH) -o device.o src/device.cpp
 
 hashfunction.o: src/hashfunction.cpp src/hashfunction.h \
 		src/utils.h \

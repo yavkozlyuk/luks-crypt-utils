@@ -5,24 +5,22 @@
 #include "utils.h"
 #include "random.h"
 
-extern Random* randomObj;
-AFUtils::AFUtils()
-{
+extern Random *randomObj;
+
+AFUtils::AFUtils() {
 
 }
 
-static void XORblock(const unsigned char *src1, const unsigned char *src2, unsigned char *dst, size_t n)
-{
+static void XORblock(const unsigned char *src1, const unsigned char *src2, unsigned char *dst, size_t n) {
     size_t j;
 
     for (j = 0; j < n; j++)
         dst[j] = src1[j] ^ src2[j];
 }
 
-static int hashBuf(const unsigned char *src,unsigned char *dst, uint32_t iv, size_t len, const char *hash_name)
-{
+static int hashBuf(const unsigned char *src, unsigned char *dst, uint32_t iv, size_t len, const char *hash_name) {
     HashFunction *hf = new HashFunction();
-    const unsigned char *iv_char = (const unsigned char *)&iv;
+    const unsigned char *iv_char = (const unsigned char *) &iv;
     int r;
 
     iv = be32_to_cpu(iv);
@@ -38,7 +36,7 @@ static int hashBuf(const unsigned char *src,unsigned char *dst, uint32_t iv, siz
         goto out;
 
     r = hf->final(dst, len);
-out:
+    out:
     delete hf;
     return r;
 }
@@ -47,9 +45,8 @@ out:
  * diffuse: Information spreading over the whole dataset with
  * the help of hash function.
  */
-static int diffuse(const unsigned char *src, unsigned char *dst, size_t size, const char *hashName)
-{
-    
+static int diffuse(const unsigned char *src, unsigned char *dst, size_t size, const char *hashName) {
+
     int r, hash_size = HashFunction::hashSize(hashName);
     unsigned int digest_size;
     unsigned int i, blocks, padding;
@@ -61,11 +58,11 @@ static int diffuse(const unsigned char *src, unsigned char *dst, size_t size, co
     blocks = size / digest_size;
     padding = size % digest_size;
 
-    
+
     for (i = 0; i < blocks; i++) {
         r = hashBuf(src + digest_size * i,
                     dst + digest_size * i,
-                    i, (size_t)digest_size, hashName);
+                    i, (size_t) digest_size, hashName);
         if (r < 0)
             return r;
     }
@@ -73,21 +70,22 @@ static int diffuse(const unsigned char *src, unsigned char *dst, size_t size, co
     if (padding) {
         r = hashBuf(src + digest_size * i,
                     dst + digest_size * i,
-                    i, (size_t)padding, hashName);
+                    i, (size_t) padding, hashName);
         if (r < 0)
             return r;
     }
-    
+
 
     return 0;
 }
-int AFUtils::split(const unsigned char *src, unsigned char *dst, size_t blocksize, unsigned int blocknumbers, const char *hash)
-{
+
+int AFUtils::split(const unsigned char *src, unsigned char *dst, size_t blocksize, unsigned int blocknumbers,
+                   const char *hash) {
     unsigned int i;
     unsigned char *bufblock;
     int r;
 
-    bufblock =(unsigned char*) Utils::safeAlloc(blocksize);
+    bufblock = (unsigned char *) Utils::safeAlloc(blocksize);
     if (!bufblock)
         return -ENOMEM;
 
@@ -105,24 +103,24 @@ int AFUtils::split(const unsigned char *src, unsigned char *dst, size_t blocksiz
     /* the last block is computed */
     XORblock(src, bufblock, dst + blocksize * i, blocksize);
     r = 0;
-out:
+    out:
     Utils::safeFree(bufblock);
     return r;
 }
 
-int AFUtils::merge(const unsigned char *src, unsigned char *dst, size_t blocksize, unsigned int blocknumbers, const char *hash)
-{
-    
+int AFUtils::merge(const unsigned char *src, unsigned char *dst, size_t blocksize, unsigned int blocknumbers,
+                   const char *hash) {
+
     unsigned int i;
     unsigned char *blockBuffer;
     int r;
 
-    
-    blockBuffer = (unsigned char*)Utils::safeAlloc(blocksize);
+
+    blockBuffer = (unsigned char *) Utils::safeAlloc(blocksize);
     if (!blockBuffer)
         return -ENOMEM;
 
-    for(i = 0; i < blocknumbers - 1; i++) {
+    for (i = 0; i < blocknumbers - 1; i++) {
         XORblock(src + blocksize * i, blockBuffer, blockBuffer, blocksize);
         r = diffuse(blockBuffer, blockBuffer, blocksize, hash);
         if (r < 0)
@@ -130,13 +128,12 @@ int AFUtils::merge(const unsigned char *src, unsigned char *dst, size_t blocksiz
     }
     XORblock(src + blocksize * i, blockBuffer, dst, blocksize);
     r = 0;
-out:
+    out:
     Utils::safeFree(blockBuffer);
     return r;
 }
 
-size_t AFUtils::splitSectors(size_t blocksize, unsigned int blocknumbers)
-{
+size_t AFUtils::splitSectors(size_t blocksize, unsigned int blocknumbers) {
     size_t afSize;
 
     /* data material * stripes */

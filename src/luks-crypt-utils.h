@@ -1,5 +1,6 @@
 #ifndef LUKSCRYPTUTILS_H
 #define LUKSCRYPTUTILS_H
+
 #include <getopt.h>
 #include <iostream>
 #include <stdio.h>
@@ -13,8 +14,6 @@
 #include <stddef.h>
 #include <cstdint>
 #include <limits.h>
-
-
 
 
 #endif // LUKSCRYPTUTILS_H

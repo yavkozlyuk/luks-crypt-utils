@@ -4,8 +4,9 @@
 #include "logger.h"
 #include <iomanip>
 #include "utils.h"
+
 extern Logger *logger;
-extern int opt_force_password;
+
 Key::Key() {
 
 }
@@ -13,7 +14,7 @@ Key::Key() {
 Key::Key(size_t size, const char *key) {
     if (size > (SIZE_MAX - sizeof(*this)))
         throw std::invalid_argument("given keylength is too large");
-    this->key = (unsigned char *)Utils::safeAlloc(size);
+    this->key = (unsigned char *) Utils::safeAlloc(size);
     this->keySize = size;
     /* keylength 0 is valid => no key */
     if (this->keySize) {
@@ -25,9 +26,8 @@ Key::Key(size_t size, const char *key) {
 
 }
 
-Key::Key(Key &obj)
-{
-    this->key = (unsigned char *)Utils::safeAlloc(obj.keySize);
+Key::Key(Key &obj) {
+    this->key = (unsigned char *) Utils::safeAlloc(obj.keySize);
     this->keySize = obj.getKeySize();
     /* keylength 0 is valid => no key */
     if (this->keySize) {
@@ -38,8 +38,7 @@ Key::Key(Key &obj)
     }
 }
 
-Key::~Key()
-{
+Key::~Key() {
     if (this->key)
         Utils::safeFree(this->key);
 }
@@ -47,7 +46,7 @@ Key::~Key()
 int Key::readKey(const char *file, size_t keysize) {
     int fd;
     this->keySize = keysize;
-    this->key = (unsigned char*)Utils::safeAlloc(keysize);
+    this->key = (unsigned char *) Utils::safeAlloc(keysize);
     if (!this->key)
         return -ENOMEM;
     fd = open(file, O_RDONLY);
@@ -62,19 +61,19 @@ int Key::readKey(const char *file, size_t keysize) {
     }
     close(fd);
     return 0;
-fail:
+    fail:
     Utils::safeFree(key);
     key = NULL;
     return -EINVAL;
 }
+
 /* Password reading helpers */
-static int untimed_read(int fd, char *pass, size_t maxlen)
-{
+static int untimed_read(int fd, char *pass, size_t maxlen) {
     ssize_t i;
 
     i = read(fd, pass, maxlen);
     if (i > 0) {
-        pass[i-1] = '\0';
+        pass[i - 1] = '\0';
         i = 0;
     } else if (i == 0) { /* EOF */
         *pass = 0;
@@ -83,8 +82,7 @@ static int untimed_read(int fd, char *pass, size_t maxlen)
     return i;
 }
 
-static int timed_read(int fd, char *pass, size_t maxlen, long timeout)
-{
+static int timed_read(int fd, char *pass, size_t maxlen, long timeout) {
     struct timeval t;
     fd_set fds = {}; /* Just to avoid scan-build false report for FD_SET */
     int failed = -1;
@@ -94,14 +92,14 @@ static int timed_read(int fd, char *pass, size_t maxlen, long timeout)
     t.tv_sec = timeout;
     t.tv_usec = 0;
 
-    if (select(fd+1, &fds, NULL, NULL, &t) > 0)
+    if (select(fd + 1, &fds, NULL, NULL, &t) > 0)
         failed = untimed_read(fd, pass, maxlen);
 
     return failed;
 }
+
 static int interactive_pass(const char *prompt, char *pass, size_t maxlen,
-                            long timeout)
-{
+                            long timeout) {
     struct termios orig, tmp;
     int failed = -1;
     int infd, outfd;
@@ -133,7 +131,7 @@ static int interactive_pass(const char *prompt, char *pass, size_t maxlen,
         failed = untimed_read(infd, pass, maxlen);
     tcsetattr(infd, TCSAFLUSH, &orig);
 
-out_err:
+    out_err:
     void *tp2 = malloc(10900);
     free(tp2);
     if (!failed && write(outfd, "\n", 1)) {};
@@ -142,62 +140,62 @@ out_err:
         close(infd);
     return failed;
 }
-int Key::readKeyTty(const char *prompt,int timeout, int verify)
-{
+
+int Key::readKeyTty(const char *prompt, int timeout, int verify) {
     int key_size_max = DEFAULT_PASSPHRASE_SIZE_MAX;
     int r = -EINVAL;
     char *pass = NULL, *pass_verify = NULL;
 
     this->key = NULL;
-    this->keySize= 0;
+    this->keySize = 0;
 
 
     Logger::debug("Interactive passphrase entry requested.");
 
-    pass = (char *)Utils::safeAlloc(key_size_max + 1);
+    pass = (char *) Utils::safeAlloc(key_size_max + 1);
     if (!pass) {
-        Logger::error( "Out of memory while reading passphrase.");
+        Logger::error("Out of memory while reading passphrase.");
         return -ENOMEM;
     }
 
     if (interactive_pass(prompt, pass, key_size_max, timeout)) {
-        Logger::error( "Error reading passphrase from terminal.");
+        Logger::error("Error reading passphrase from terminal.");
         goto out_err;
     }
 
     pass[key_size_max] = '\0';
 
     if (verify) {
-        pass_verify = (char *)Utils::safeAlloc(key_size_max);
+        pass_verify = (char *) Utils::safeAlloc(key_size_max);
         if (!pass_verify) {
-            Logger::error( "Out of memory while reading passphrase.");
+            Logger::error("Out of memory while reading passphrase.");
             r = -ENOMEM;
             goto out_err;
         }
 
         if (interactive_pass("Verify passphrase: ", pass_verify, key_size_max, timeout)) {
-            Logger::error( "Error reading passphrase from terminal.");
+            Logger::error("Error reading passphrase from terminal.");
             goto out_err;
         }
 
         if (strncmp(pass, pass_verify, key_size_max)) {
-            Logger::error( "Passphrases do not match.");
+            Logger::error("Passphrases do not match.");
             r = -EPERM;
             goto out_err;
         }
     }
 
-    this->key = (unsigned char*)pass;
+    this->key = (unsigned char *) pass;
     this->keySize = strlen(pass);
     r = 0;
-out_err:
+    out_err:
     Utils::safeFree(pass_verify);
     if (r)
         Utils::safeFree(pass);
     return r;
 }
-static int keyfileSeek(int fd, uint64_t bytes)
-{
+
+static int keyfileSeek(int fd, uint64_t bytes) {
     char tmp[BUFSIZ];
     size_t next_read;
     ssize_t bytes_r;
@@ -211,7 +209,7 @@ static int keyfileSeek(int fd, uint64_t bytes)
 
     while (bytes > 0) {
         /* figure out how much to read */
-        next_read = bytes > sizeof(tmp) ? sizeof(tmp) : (size_t)bytes;
+        next_read = bytes > sizeof(tmp) ? sizeof(tmp) : (size_t) bytes;
 
         bytes_r = read(fd, tmp, next_read);
         if (bytes_r < 0) {
@@ -233,9 +231,9 @@ static int keyfileSeek(int fd, uint64_t bytes)
     Utils::memzero(tmp, sizeof(tmp));
     return bytes == 0 ? 0 : -1;
 }
+
 //crypt_keyfile_device_read
-int Key::readKeyFromFile(const char *keyfile, uint64_t keyfile_offset, size_t key_size)
-{
+int Key::readKeyFromFile(const char *keyfile, uint64_t keyfile_offset, size_t key_size) {
     int fd, regular_file, char_to_read = 0, char_read = 0, unlimited_read = 0;
     int r = -EINVAL, newline;
     char *pass = NULL;
@@ -247,16 +245,16 @@ int Key::readKeyFromFile(const char *keyfile, uint64_t keyfile_offset, size_t ke
         return -EINVAL;
 
     this->key = NULL;
-    this->keySize= 0;
+    this->keySize = 0;
 
     fd = keyfile ? open(keyfile, O_RDONLY) : STDIN_FILENO;
     if (fd < 0) {
-        Logger::error( "Failed to open key file.");
+        Logger::error("Failed to open key file.");
         return -EINVAL;
     }
 
     if (isatty(fd)) {
-        Logger::error( "Cannot read keyfile from a terminal.");
+        Logger::error("Cannot read keyfile from a terminal.");
         r = -EINVAL;
         goto out_err;
     }
@@ -273,45 +271,45 @@ int Key::readKeyFromFile(const char *keyfile, uint64_t keyfile_offset, size_t ke
     regular_file = 0;
     if (keyfile) {
         if (stat(keyfile, &st) < 0) {
-            Logger::error( "Failed to stat key file.");
+            Logger::error("Failed to stat key file.");
             goto out_err;
         }
         if (S_ISREG(st.st_mode)) {
             regular_file = 1;
-            file_read_size = (uint64_t)st.st_size;
+            file_read_size = (uint64_t) st.st_size;
 
             if (keyfile_offset > file_read_size) {
-                Logger::error( "Cannot seek to requested keyfile offset.");
+                Logger::error("Cannot seek to requested keyfile offset.");
                 goto out_err;
             }
             file_read_size -= keyfile_offset;
 
             /* known keyfile size, alloc it in one step */
-            if (file_read_size >= (uint64_t)key_size)
+            if (file_read_size >= (uint64_t) key_size)
                 buflen = key_size;
             else if (file_read_size)
                 buflen = file_read_size;
         }
     }
 
-    pass = (char*)Utils::safeAlloc(buflen);
+    pass = (char *) Utils::safeAlloc(buflen);
     if (!pass) {
-        Logger::error( "Out of memory while reading passphrase.");
+        Logger::error("Out of memory while reading passphrase.");
         goto out_err;
     }
 
     /* Discard keyfile_offset bytes on input */
     if (keyfile_offset && keyfileSeek(fd, keyfile_offset) < 0) {
-        Logger::error( "Cannot seek to requested keyfile offset.");
+        Logger::error("Cannot seek to requested keyfile offset.");
         goto out_err;
     }
 
     for (i = 0, newline = 0; i < key_size; i += char_read) {
         if (i == buflen) {
             buflen += 4096;
-            pass = (char*)Utils::safeRealloc(pass, buflen);
+            pass = (char *) Utils::safeRealloc(pass, buflen);
             if (!pass) {
-                Logger::error( "Out of memory while reading passphrase.");
+                Logger::error("Out of memory while reading passphrase.");
                 r = -ENOMEM;
                 goto out_err;
             }
@@ -327,11 +325,11 @@ int Key::readKeyFromFile(const char *keyfile, uint64_t keyfile_offset, size_t ke
         } else {
             /* char_to_read = min(key_size - i, buflen - i) */
             char_to_read = key_size < buflen ?
-                        key_size - i : buflen - i;
+                           key_size - i : buflen - i;
         }
         char_read = IOUtils::readBuffer(fd, &pass[i], char_to_read);
         if (char_read < 0) {
-            Logger::error( "Error reading passphrase.");
+            Logger::error("Error reading passphrase.");
             r = -EPIPE;
             goto out_err;
         }
@@ -348,26 +346,26 @@ int Key::readKeyFromFile(const char *keyfile, uint64_t keyfile_offset, size_t ke
 
     /* Fail if piped input dies reading nothing */
     if (!i && !regular_file && !newline) {
-        Logger::error( "Nothing to read on input.");
+        Logger::error("Nothing to read on input.");
         r = -EPIPE;
         goto out_err;
     }
 
     /* Fail if we exceeded internal default (no specified size) */
     if (unlimited_read && i == key_size) {
-        Logger::error( "Maximum keyfile size exceeded.");
+        Logger::error("Maximum keyfile size exceeded.");
         goto out_err;
     }
 
     if (!unlimited_read && i != key_size) {
-        Logger::error( "Cannot read requested amount of data.");
+        Logger::error("Cannot read requested amount of data.");
         goto out_err;
     }
 
-    this->key =(unsigned char*) pass;
+    this->key = (unsigned char *) pass;
     this->keySize = i;
     r = 0;
-out_err:
+    out_err:
     if (fd != STDIN_FILENO)
         close(fd);
 
@@ -375,8 +373,10 @@ out_err:
         Utils::safeFree(pass);
     return r;
 }
-int Key::readKey(const char* prompt, uint64_t keyfile_offset, size_t keyfile_size_max, const char *key_file, int timeout, int verify, int pwquality,const char *devicePath)
-{
+
+int
+Key::readKey(const char *prompt, uint64_t keyfile_offset, size_t keyfile_size_max, const char *key_file, int timeout,
+             int verify, int pwquality, const char *devicePath) {
     char tmp[1024];
     int r = -EINVAL, block;
     if (Utils::isStdin(key_file)) {
@@ -386,7 +386,7 @@ int Key::readKey(const char* prompt, uint64_t keyfile_offset, size_t keyfile_siz
             if (!prompt && !devicePath)
                 snprintf(tmp, sizeof(tmp), "Enter passphrase: ");
             else if (!prompt)
-                snprintf(tmp, sizeof(tmp), "Enter passphrase for %s: ",devicePath);
+                snprintf(tmp, sizeof(tmp), "Enter passphrase for %s: ", devicePath);
             r = readKeyTty(prompt ?: tmp, timeout, verify);
         }
 
@@ -398,40 +398,35 @@ int Key::readKey(const char* prompt, uint64_t keyfile_offset, size_t keyfile_siz
     return r;
 }
 
-size_t Key::getKeySize() const
-{
+size_t Key::getKeySize() const {
     return keySize;
 }
 
-void Key::setKeySize(const size_t &value)
-{
+void Key::setKeySize(const size_t &value) {
     keySize = value;
 }
 
-unsigned char *Key::getKey() const
-{
+unsigned char *Key::getKey() const {
     return key;
 }
 
-void Key::setKey(unsigned char *value)
-{
+void Key::setKey(unsigned char *value) {
     key = value;
 }
 
-int Key::writeKey(const char *file)
-{
+int Key::writeKey(const char *file) {
     int fd, r = -EINVAL;
 
-    fd = open(file, O_CREAT|O_EXCL|O_WRONLY, S_IRUSR);
+    fd = open(file, O_CREAT | O_EXCL | O_WRONLY, S_IRUSR);
     if (fd < 0) {
-        Logger::error( "Cannot open keyfile %s for write.", file);
+        Logger::error("Cannot open keyfile %s for write.", file);
         return r;
     }
 
     if (IOUtils::writeBuffer(fd, key, keySize) == keySize)
         r = 0;
     else
-        Logger::error( "Cannot write to keyfile %s.", file);
+        Logger::error("Cannot write to keyfile %s.", file);
 
     close(fd);
     return r;
@@ -443,10 +438,10 @@ std::ostream &operator<<(std::ostream &os, const Key &key) {
     std::ios state(nullptr);;
 
     state.copyfmt(std::cout);
-    for(int i = 0; i < key.getKeySize(); i++) {
+    for (int i = 0; i < key.getKeySize(); i++) {
         if (i && !(i % 16))
             std::cout << ("\n\t\t");
-        std::cout << "0x " << std::hex << std::uppercase << std::setw(8) << std::setfill('0') << (char)key.getKey()[i];
+        std::cout << "0x " << std::hex << std::uppercase << std::setw(8) << std::setfill('0') << (char) key.getKey()[i];
     }
     std::cout.copyfmt(state);
     std::cout << std::endl;

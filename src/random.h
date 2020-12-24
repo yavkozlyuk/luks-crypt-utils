@@ -4,12 +4,14 @@
 
 #include <stddef.h>
 
-class Random
-{
+class Random {
 public:
     Random();
+
     virtual ~Random();
+
     int getRandom(unsigned char *buf, size_t len);
+
 private:
     int randomfd = -1;
 };

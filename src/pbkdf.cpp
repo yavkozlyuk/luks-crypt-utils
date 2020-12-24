@@ -12,35 +12,34 @@ extern long opt_pbkdf_iterations;
 extern int opt_iteration_time;
 
 extern struct PbkdfType defaultLuks1;
+
 /* These PBKDF2 limits must be never violated */
-static int pbkdfGetLimits(const char *kdf, struct PbkdfLimits *limits)
-{
+static int pbkdfGetLimits(const char *kdf, struct PbkdfLimits *limits) {
     if (!kdf || !limits)
         return -EINVAL;
 
     if (!strcmp(kdf, "pbkdf2")) {
         limits->min_iterations = 1000; /* recommendation in NIST SP 800-132 */
         limits->max_iterations = UINT32_MAX;
-        limits->min_memory     = 0; /* N/A */
-        limits->max_memory     = 0; /* N/A */
-        limits->min_parallel   = 0; /* N/A */
-        limits->max_parallel   = 0; /* N/A */
+        limits->min_memory = 0; /* N/A */
+        limits->max_memory = 0; /* N/A */
+        limits->min_parallel = 0; /* N/A */
+        limits->max_parallel = 0; /* N/A */
         return 0;
     } else if (!strcmp(kdf, "argon2i") || !strcmp(kdf, "argon2id")) {
         limits->min_iterations = 4;
         limits->max_iterations = UINT32_MAX;
-        limits->min_memory     = 32;
-        limits->max_memory     = 4*1024*1024; /* 4GiB */
-        limits->min_parallel   = 1;
-        limits->max_parallel   = 4;
+        limits->min_memory = 32;
+        limits->max_memory = 4 * 1024 * 1024; /* 4GiB */
+        limits->min_parallel = 1;
+        limits->max_parallel = 4;
         return 0;
     }
 
     return -EINVAL;
 }
 
-int parsePbkdf(const char *s, const char **pbkdf)
-{
+int parsePbkdf(const char *s, const char **pbkdf) {
     const char *tmp = NULL;
 
     if (!s)
@@ -88,7 +87,7 @@ int verifyPbkdfParams(LuksDevice *device, const struct PbkdfType *pbkdf) {
         return r;
 
     if (!pbkdf->type ||
-            (!pbkdf->hash && !strcmp(pbkdf->type, "pbkdf2")))
+        (!pbkdf->hash && !strcmp(pbkdf->type, "pbkdf2")))
         return -EINVAL;
 
     if (!pbkdf->timeMs && !(pbkdf->flags & CRYPT_PBKDF_NO_BENCHMARK)) {
@@ -122,8 +121,9 @@ int verifyPbkdfParams(LuksDevice *device, const struct PbkdfType *pbkdf) {
             return -EINVAL;
         }
         if (pbkdf->flags & CRYPT_PBKDF_NO_BENCHMARK &&
-                pbkdf->iterations < pbkdfLimits.min_iterations) {
-            Logger::error("Forced iteration count is too low for %s (minimum is %u).",pbkdf_type, pbkdfLimits.min_iterations);
+            pbkdf->iterations < pbkdfLimits.min_iterations) {
+            Logger::error("Forced iteration count is too low for %s (minimum is %u).", pbkdf_type,
+                          pbkdfLimits.min_iterations);
             return -EINVAL;
         }
         return 0;
@@ -144,7 +144,8 @@ int verifyPbkdfParams(LuksDevice *device, const struct PbkdfType *pbkdf) {
     }
 
     if (pbkdf->maxMemoryKb > pbkdfLimits.max_memory) {
-        Logger::error("Requested maximum PBKDF memory cost is too high (maximum is %d kilobytes).", pbkdfLimits.max_memory);
+        Logger::error("Requested maximum PBKDF memory cost is too high (maximum is %d kilobytes).",
+                      pbkdfLimits.max_memory);
         r = -EINVAL;
     }
     if (!pbkdf->maxMemoryKb) {
@@ -182,15 +183,15 @@ int initPbkdfType(LuksDevice *device, const PbkdfType *pbkdf, const char *devTyp
     hash = pbkdf->hash ? strdup(pbkdf->hash) : NULL;
 
     if (!type || (!hash && pbkdf->hash)) {
-        free(CONST_CAST(void*)type);
-        free(CONST_CAST(void*)hash);
+        free(CONST_CAST(void*) type);
+        free(CONST_CAST(void*) hash);
         return -ENOMEM;
     }
-    if (cd_pbkdf->type)
-        free(CONST_CAST(void*)cd_pbkdf->type);
-    free(CONST_CAST(void*)cd_pbkdf->hash);
-    cd_pbkdf->type = (char*) type;
-    cd_pbkdf->hash = (char*) hash;
+    //if (cd_pbkdf->type)
+    //    free(CONST_CAST(void*) cd_pbkdf->type);
+    free(CONST_CAST(void*) cd_pbkdf->hash);
+    cd_pbkdf->type = (char *) type;
+    cd_pbkdf->hash = (char *) hash;
 
     old_flags = cd_pbkdf->flags;
     cd_pbkdf->flags = pbkdf->flags;
@@ -210,7 +211,8 @@ int initPbkdfType(LuksDevice *device, const PbkdfType *pbkdf, const char *devTyp
     cd_pbkdf->parallelThreads = pbkdf->parallelThreads;
 
     if (cd_pbkdf->parallelThreads > pbkdfLimits.max_parallel) {
-        Logger::debug("Maximum PBKDF threads is %d (requested %d).", pbkdfLimits.max_parallel, cd_pbkdf->parallelThreads);
+        Logger::debug("Maximum PBKDF threads is %d (requested %d).", pbkdfLimits.max_parallel,
+                      cd_pbkdf->parallelThreads);
         cd_pbkdf->parallelThreads = pbkdfLimits.max_parallel;
     }
 
@@ -254,7 +256,7 @@ int setPbkdfType(LuksDevice *device, const PbkdfType *pbkdf) {
     return initPbkdfType(device, pbkdf, device->getType());
 }
 
-const PbkdfType *getPbkdfDefault(const char *type){
+const PbkdfType *getPbkdfDefault(const char *type) {
     if (!type)
         return NULL;
 
@@ -273,7 +275,7 @@ void setIterationTime(LuksDevice *device, uint64_t iteration_timeMs) {
 
     pbkdf = device->getPbkdf();
     old_timeMs = pbkdf->timeMs;
-    pbkdf->timeMs = (uint32_t)iteration_timeMs;
+    pbkdf->timeMs = (uint32_t) iteration_timeMs;
 
     if (pbkdf->type && verifyPbkdfParams(device, pbkdf)) {
         pbkdf->timeMs = old_timeMs;
@@ -290,18 +292,18 @@ void setIterationTime(LuksDevice *device, uint64_t iteration_timeMs) {
     Logger::debug("Iteration time set to %" PRIu64 " milliseconds.", iteration_timeMs);
 }
 
-int setPbkdfParams(LuksDevice *device, const char *devType){
+int setPbkdfParams(LuksDevice *device, const char *devType) {
     struct PbkdfType pbkdf = {};
 
     if (!strcmp(devType, CRYPT_LUKS1)) {
         if (opt_pbkdf && strcmp(opt_pbkdf, CRYPT_KDF_PBKDF2))
             return -EINVAL;
-        pbkdf.type = (char*)CRYPT_KDF_PBKDF2;
-        pbkdf.hash = (char*)(opt_hash ?: DEFAULT_LUKS1_HASH);
+        pbkdf.type = (char *) CRYPT_KDF_PBKDF2;
+        pbkdf.hash = (char *) (opt_hash ?: DEFAULT_LUKS1_HASH);
         pbkdf.timeMs = opt_iteration_time ?: DEFAULT_LUKS1_ITER_TIME;
     } else if (!strcmp(devType, CRYPT_LUKS2)) {
-        pbkdf.type = (char*)(opt_pbkdf ?: DEFAULT_LUKS2_PBKDF);
-        pbkdf.hash = (char*)(opt_hash ?: DEFAULT_LUKS1_HASH);
+        pbkdf.type = (char *) (opt_pbkdf ?: DEFAULT_LUKS2_PBKDF);
+        pbkdf.hash = (char *) (opt_hash ?: DEFAULT_LUKS1_HASH);
         pbkdf.timeMs = (opt_iteration_time ?: DEFAULT_LUKS2_ITER_TIME);
         if (strcmp(pbkdf.type, CRYPT_KDF_PBKDF2)) {
             pbkdf.maxMemoryKb = opt_pbkdf_memory;

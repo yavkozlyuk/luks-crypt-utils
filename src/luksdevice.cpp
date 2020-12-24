@@ -48,8 +48,8 @@ LuksDevice::~LuksDevice() {
         free(this->type);
     if (this->pbkdf.hash)
         free(CONST_CAST(void*)this->pbkdf.hash);
-    if (this->pbkdf.type)
-        free(CONST_CAST(void*)this->pbkdf.type);
+    //if (this->pbkdf.type)
+    //    free(CONST_CAST(void*)this->pbkdf.type);
     if (this->storageKey)
            this->storageKey.reset();
 }
@@ -570,14 +570,6 @@ int LuksDevice::addKeySlotByStorageKey(int keyslot, StorageKey* key, Key* passwo
 
     Logger::debug("Adding new keyslot %d using volume key.", keyslot);
 
-    /*  if ((r = onlyLUKS(cd)))
-            return r;
-
-       if (isLUKS2(cd->type))
-            return crypt_keyslot_add_by_key(cd, keyslot,
-                    volume_key, volume_key_size, passphrase,
-                    passphrase_size, 0);
-        */
     r = verifyOrFindEmptyKeySlot(this, &keyslot);
     if (r < 0)
         return r;
@@ -607,7 +599,7 @@ int LuksDevice::addKeySlotByPassphrase(int keyslot, Key *passphrase, Key *newPas
     Logger::debug("Adding new keyslot, existing passphrase %sprovided,"
                   "new passphrase %sprovided.", passphrase && passphrase->getKey() ? "" : "not ", newPassphrase && newPassphrase->getKey()  ? "" : "not ");
 
-    if (passphrase || passphrase->getKey() || newPassphrase || newPassphrase->getKey())
+    if (!passphrase || !passphrase->getKey() || !newPassphrase || !newPassphrase->getKey())
         return -EINVAL;
 
     r = verifyOrFindEmptyKeySlot(this, &keyslot);
@@ -1242,6 +1234,14 @@ out:
         Logger::error("IO error while encrypting keyslot.");
 
     return r;
+}
+
+int LuksDevice::backupHeader(const char *backupFile) {
+
+}
+
+int LuksDevice::restoreHeader(const char *backupFile) {
+
 }
 static size_t deviceFsBlockSizeFd(int fd) {
     size_t pageSize = Utils::getPageSize();

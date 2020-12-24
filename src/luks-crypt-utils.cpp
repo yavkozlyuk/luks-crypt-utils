@@ -6,62 +6,62 @@
 #include "utils.h"
 
 
-const char** action_argv;
+const char **action_argv;
 int action_argc;
-const char* null_action_argv[] = { NULL, NULL };
+const char *null_action_argv[] = {NULL, NULL};
 
 
+Logger *logger = new Logger();
+Random *randomObj = new Random();
 
-Logger* logger = new Logger();
-Random* randomObj = new Random();
 static struct action_type {
-    const char* type;
+    const char *type;
+
     int (*handler)(void);
+
     int required_action_argc;
-    const char* arg_desc;
-    const char* desc;
+    const char *arg_desc;
+    const char *desc;
 } action_types[] = {
-    //{ "benchmark",    action_benchmark,    0, 0, ("[--cipher <cipher>]"), ("benchmark cipher") },
-    //{ "repair",       action_luksRepair,   1, 1, ("<device>"), ("try to repair on-disk metadata") },
-    //{ "erase",        action_luksErase ,   1, 1, ("<device>"), ("erase all keyslots (remove encryption key)") },
-{ "luksAddKey",   LuksActions::action_luksAddKey,   1,  ("<device> [<new key file>]"), ("add key to LUKS device") },
-{ "luksRemoveKey",LuksActions::action_luksRemoveKey,1,  ("<device> [<key file>]"), ("removes supplied key or key file from LUKS device") },
-{ "luksChangeKey",LuksActions::action_luksChangeKey,1, ("<device> [<key file>]"), ("changes supplied key or key file of LUKS device") },
-{ "luksKillSlot", LuksActions::action_luksKillSlot, 2, ("<device> <key slot>"), ("wipes key with number <key slot> from LUKS device") },
-{ "luksUUID",     LuksActions::action_luksUUID,     1,  ("<device>"), ("print UUID of LUKS device") },
-{ "is_luks",       LuksActions::action_is_luks,       1, "<device>", "tests <device> for LUKS partition header" },
-{ "decrypt",      LuksActions::action_decrypt,     1, "<device>", "decrypt LUKS <device>" },
-{ "read_header",      LuksActions::action_read_header,     1,  "<device>", "dump LUKS partition information" },
-{ "reencrypt",      LuksActions::action_reencrypt,     1,  "<device>", "reencrypt <device>" },
-{ "encrypt",      LuksActions::action_encrypt,     1, "<device>", "encrypt <device>" },
-//{ "luksHeaderBackup", action_luksBackup,1,1, ("<device>"), ("Backup LUKS device header and keyslots") },
-//{ "luksHeaderRestore",action_luksRestore,1,1,("<device>"), ("Restore LUKS device header and keyslots") },
-{""}
+        {"addKey",        LuksActions::action_addKey,        1, ("<device> [<new key file>]"), ("add key to LUKS device")},
+        {"removeKey",     LuksActions::action_removeKey,     1, ("<device> [<key file>]"),     ("removes supplied key or key file from LUKS device")},
+        {"changeKey",     LuksActions::action_changeKey,     1, ("<device> [<key file>]"),     ("changes supplied key or key file of LUKS device")},
+        {"killSlot",      LuksActions::action_killSlot,      2, ("<device> <key slot>"),       ("wipes key with number <key slot> from LUKS device")},
+        {"UUID",          LuksActions::action_UUID,          1, ("<device>"),                  ("print UUID of LUKS device")},
+        {"is_luks",       LuksActions::action_is_luks,       1, "<device>",                    "tests <device> for LUKS partition header"},
+        {"decrypt",       LuksActions::action_decrypt,       1, "<device>",                    "decrypt LUKS <device>"},
+        {"read_header",   LuksActions::action_read_header,   1, "<device>",                    "dump LUKS partition information"},
+        {"reencrypt",     LuksActions::action_reencrypt,     1, "<device>",                    "reencrypt <device>"},
+        {"encrypt",       LuksActions::action_encrypt,       1, "<device>",                    "encrypt <device>"},
+        {"headerBackup",  LuksActions::action_headerBackup,  1, ("<device>"),                  ("Backup LUKS device header and keyslots")},
+        {"headerRestore", LuksActions::action_headerRestore, 1, ("<device>"),                  ("Restore LUKS device header and keyslots")},
+        {""}
 };
 
 __attribute__((noreturn)) void usage(poptContext popt_context,
-                                     int exitcode, const char* error,
-                                     const char* more) {
+                                     int exitcode, const char *error,
+                                     const char *more) {
     poptPrintUsage(popt_context, stderr, 0);
     if (error)
         Logger::error("%s: %s", more, error);
     poptFreeContext(popt_context);
     exit(exitcode);
 }
+
 struct PbkdfType defaultLuks1 = {
-    .type = (char*)CRYPT_KDF_PBKDF2,
-    .hash = (char*)DEFAULT_LUKS1_HASH,
-    .timeMs = DEFAULT_LUKS1_ITER_TIME
+        .type = (char *) CRYPT_KDF_PBKDF2,
+        .hash = (char *) DEFAULT_LUKS1_HASH,
+        .timeMs = DEFAULT_LUKS1_ITER_TIME
 };
 
 static void help(poptContext popt_context,
                  enum poptCallbackReason reason __attribute__((unused)),
-                 struct poptOption* key,
-                 const char* arg __attribute__((unused)),
-                 void* data __attribute__((unused))) {
+                 struct poptOption *key,
+                 const char *arg __attribute__((unused)),
+                 void *data __attribute__((unused))) {
     if (key->shortName == '?') {
-        struct action_type* action;
-        const struct PbkdfType* pbkdf_luks1;
+        struct action_type *action;
+        const struct PbkdfType *pbkdf_luks1;
 
         Logger::info("%s\n", PACKAGE_STRING);
 
@@ -72,18 +72,6 @@ static void help(poptContext popt_context,
         for (action = action_types; action->type; action++)
             Logger::info("\t%s %s - %s\n", action->type, action->arg_desc, action->desc);
 
-        Logger::info("\n"
-                     "You can also use old <action> syntax aliases:\n"
-                     "\topen: create (plainOpen), luksOpen, loopaesOpen, tcryptOpen\n"
-                     "\tclose: remove (plainClose), luksClose, loopaesClose, tcryptClose\n");
-        Logger::info("\n"
-                     "<name> is the device to create under %s\n"
-                     "<device> is the encrypted device\n"
-                     "<key slot> is the LUKS key slot number to modify\n"
-                     "<key file> optional key file for the new key for luksAddKey action\n",
-                     "dm-crypt devices are not supporred");
-
-        Logger::info("\nDefault compiled-in metadata format is %s (for luksFormat action).\n", DEFAULT_LUKS_FORMAT);
 
         pbkdf_luks1 = &defaultLuks1;
         Logger::info("\nDefault compiled-in key and passphrase parameters:\n"
@@ -98,12 +86,11 @@ static void help(poptContext popt_context,
                      DEFAULT_CIPHER(LUKS1), DEFAULT_LUKS1_KEYBITS, DEFAULT_LUKS1_HASH,
                      DEFAULT_RNG);
         exit(EXIT_SUCCESS);
-    }
-    else
+    } else
         usage(popt_context, EXIT_SUCCESS, NULL, NULL);
 }
 
-static void help_args(struct action_type* action, poptContext popt_context) {
+static void help_args(struct action_type *action, poptContext popt_context) {
     char buf[128];
 
     snprintf(buf, sizeof(buf), "%s: requires %s as arguments", action->type, action->arg_desc);
@@ -111,11 +98,7 @@ static void help_args(struct action_type* action, poptContext popt_context) {
 }
 
 
-
-
-
-
-static int run_action(struct action_type* action) {
+static int run_action(struct action_type *action) {
     int r;
 
     Logger::info("Running command %s.", action->type);
@@ -138,76 +121,83 @@ void clearMemory() {
     if (randomObj)
         delete randomObj;
 }
-int main(int argc, char* argv[]) {
-    static char* popt_tmp;
+
+int main(int argc, char *argv[]) {
+    static char *popt_tmp;
     static struct poptOption popt_help_options[] = {
-    { NULL,    '\0', POPT_ARG_CALLBACK, (void*)help, 0, NULL,                         NULL },
-    { "help",  '?',  POPT_ARG_NONE,     NULL, 0, ("Show this help message"), NULL },
-    { "usage", '\0', POPT_ARG_NONE,     NULL, 0, ("Display brief usage"),    NULL },
-    POPT_TABLEEND
-};
+            {NULL, '\0', POPT_ARG_CALLBACK, (void *) help, 0, NULL, NULL},
+            {"help", '?', POPT_ARG_NONE, NULL, 0, ("Show this help message"), NULL},
+            {"usage", '\0', POPT_ARG_NONE, NULL, 0, ("Display brief usage"), NULL},
+            POPT_TABLEEND
+    };
     static struct poptOption popt_options[] = {
-    { NULL,                '\0', POPT_ARG_INCLUDE_TABLE, popt_help_options, 0, ("Help options:"), NULL },
-    { "version",           '\0', POPT_ARG_NONE, &opt_version_mode,          0, ("Print package version"), NULL },
-    { "verbose",           'v',  POPT_ARG_NONE, &opt_verbose,               0, ("Shows more detailed error messages"), NULL },
-    { "debug",             '\0', POPT_ARG_NONE, &opt_debug,                 0, ("Show debug messages"), NULL },
-    { "cipher",            'c',  POPT_ARG_STRING, &opt_cipher,              0, ("The cipher used to encrypt the disk (see /proc/crypto)"), NULL },
-    { "hash",              'h',  POPT_ARG_STRING, &opt_hash,                0, ("The hash used to create the encryption key from the passphrase"), NULL },
-    { "verify-passphrase", 'y',  POPT_ARG_NONE, &opt_verify_passphrase,     0, ("Verifies the passphrase by asking for it twice"), NULL },
-    { "key-file",          'd',  POPT_ARG_STRING, &opt_key_file,            6, ("Read the key from a file"), NULL },
-    { "master-key-file",  '\0',  POPT_ARG_STRING, &opt_master_key_file,     0, ("Read the volume (master) key from file."), NULL },
-    { "dump-master-key",  '\0',  POPT_ARG_NONE, &opt_dump_master_key,       0, ("Dump volume (master) key instead of keyslots info"), NULL },
-    { "key-size",          's',  POPT_ARG_INT, &opt_key_size,               0, ("The size of the encryption key"), ("BITS") },
-    { "keyfile-size",      'l',  POPT_ARG_LONG, &opt_keyfile_size,          0, ("Limits the read from keyfile"), ("bytes") },
-    { "keyfile-offset",   '\0',  POPT_ARG_STRING, &popt_tmp,                4, ("Number of bytes to skip in keyfile"), ("bytes") },
-    { "new-keyfile-size", '\0',  POPT_ARG_LONG, &opt_new_keyfile_size,      0, ("Limits the read from newly added keyfile"), ("bytes") },
-    { "new-keyfile-offset",'\0', POPT_ARG_STRING, &popt_tmp,                5, ("Number of bytes to skip in newly added keyfile"), ("bytes") },
-    { "key-slot",          'S',  POPT_ARG_INT, &opt_key_slot,               0, ("Slot number for new key (default is first free)"), NULL },
-    { "size",              'b',  POPT_ARG_STRING, &popt_tmp,                1, ("The size of the device"), ("SECTORS") },
-    { "offset",            'o',  POPT_ARG_STRING, &popt_tmp,                2, ("The start offset in the backend device"), ("SECTORS") },
-    { "skip",              'p',  POPT_ARG_STRING, &popt_tmp,                3, ("How many sectors of the encrypted data to skip at the beginning"), ("SECTORS") },
-    { "timeout",           't',  POPT_ARG_INT, &opt_timeout,                0, ("Timeout for interactive passphrase prompt (in seconds)"), ("secs") },
-    { "tries",             'T',  POPT_ARG_INT, &opt_tries,                  0, ("How often the input of the passphrase can be retried"), NULL },
-    { "align-payload",     '\0', POPT_ARG_INT, &opt_align_payload,          0, ("Align payload at <n> sector boundaries - for luksFormat"), ("SECTORS") },
-    { "header-backup-file",'\0', POPT_ARG_STRING, &opt_header_backup_file,  0, ("File with LUKS header and keyslots backup"), NULL },
-    { "uuid",              '\0', POPT_ARG_STRING, &opt_uuid,                0, ("UUID for device to use"), NULL },
-    { "allow-discards",    '\0', POPT_ARG_NONE, &opt_allow_discards,        0, ("Allow discards (aka TRIM) requests for device"), NULL },
-    { "header",            '\0', POPT_ARG_STRING, &opt_header_device,       0, ("Device or file with separated LUKS header"), NULL },
-    { "device",            '\0', POPT_ARG_STRING, &opt_device,              0, ("Device or file with separated LUKS header"), NULL },
-    { "output-file",        '\0', POPT_ARG_STRING, &opt_output_file,        0, ("Output file"), NULL },
-    { "test-passphrase",   '\0', POPT_ARG_NONE, &opt_test_passphrase,       0, ("Do not activate device, just check passphrase"), NULL },
-    { "type",               'M', POPT_ARG_STRING, &opt_type,                0, ("Type of device metadata: luks, plain, loopaes, tcrypt"), NULL },
-    { "perf-submit_from_crypt_cpus",'\0', POPT_ARG_NONE, &opt_perf_submit_from_crypt_cpus,0,("Use dm-crypt submit_from_crypt_cpus performance compatibility option"), NULL },
-    { "deferred",          '\0', POPT_ARG_NONE, &opt_deferred_remove,       0, ("Device removal is deferred until the last user closes it"), NULL },
-    { "iter-time",         'i',  POPT_ARG_INT, &opt_iteration_time,         0, ("PBKDF iteration time for LUKS (in ms)"), ("msecs") },
-    { "priority",          '\0', POPT_ARG_STRING, &opt_priority,            0, ("Keyslot priority: ignore, normal, prefer"), NULL },
-    { "disable-locks",     '\0', POPT_ARG_NONE, &opt_disable_locks,         0, ("Disable locking of on-disk metadata"), NULL },
-    { "disable-keyring",   '\0', POPT_ARG_NONE, &opt_disable_keyring,       0, ("Disable loading volume keys via kernel keyring"), NULL },
-    { "key-description",   '\0', POPT_ARG_STRING, &opt_key_description,     0, ("Key description"), NULL },
-    { "sector-size",       '\0', POPT_ARG_INT, &opt_sector_size,            0, ("Encryption sector size (default: 512 bytes)"), NULL },
-    POPT_TABLEEND
-};
+            {NULL, '\0', POPT_ARG_INCLUDE_TABLE, popt_help_options, 0, ("Help options:"), NULL},
+            {"version", '\0', POPT_ARG_NONE, &opt_version_mode, 0, ("Print package version"), NULL},
+            {"verbose", 'v', POPT_ARG_NONE, &opt_verbose, 0, ("Shows more detailed error messages"), NULL},
+            {"debug", '\0', POPT_ARG_NONE, &opt_debug, 0, ("Show debug messages"), NULL},
+            {"cipher", 'c', POPT_ARG_STRING, &opt_cipher, 0, ("The cipher used to encrypt the disk (see /proc/crypto)"),
+             NULL},
+            {"hash", 'h', POPT_ARG_STRING, &opt_hash, 0,
+             ("The hash used to create the encryption key from the passphrase"), NULL},
+            {"verify-passphrase", 'y', POPT_ARG_NONE, &opt_verify_passphrase, 0,
+             ("Verifies the passphrase by asking for it twice"), NULL},
+            {"key-file", 'd', POPT_ARG_STRING, &opt_key_file, 6, ("Read the key from a file"), NULL},
+            {"new-key-file", 'd', POPT_ARG_STRING, &opt_new_key_file, 7, ("Read the new key from a file"), NULL},
+            {"master-key-file", '\0', POPT_ARG_STRING, &opt_master_key_file, 0,
+             ("Read the volume (master) key from file."), NULL},
+            {"dump-master-key", '\0', POPT_ARG_NONE, &opt_dump_master_key, 0,
+             ("Dump volume (master) key instead of keyslots info"), NULL},
+            {"key-size", 's', POPT_ARG_INT, &opt_key_size, 0, ("The size of the encryption key"), ("BITS")},
+            {"keyfile-size", 'l', POPT_ARG_LONG, &opt_keyfile_size, 0, ("Limits the read from keyfile"), ("bytes")},
+            {"keyfile-offset", '\0', POPT_ARG_STRING, &popt_tmp, 4, ("Number of bytes to skip in keyfile"), ("bytes")},
+            {"new-keyfile-size", '\0', POPT_ARG_LONG, &opt_new_keyfile_size, 0,
+             ("Limits the read from newly added keyfile"), ("bytes")},
+            {"new-keyfile-offset", '\0', POPT_ARG_STRING, &popt_tmp, 5,
+             ("Number of bytes to skip in newly added keyfile"), ("bytes")},
+            {"key-slot", 'S', POPT_ARG_INT, &opt_key_slot, 0, ("Slot number for new key (default is first free)"),
+             NULL},
+            {"timeout", 't', POPT_ARG_INT, &opt_timeout, 0, ("Timeout for interactive passphrase prompt (in seconds)"),
+             ("secs")},
+            {"align-payload", '\0', POPT_ARG_INT, &opt_align_payload, 0,
+             ("Align payload at <n> sector boundaries - for luksFormat"), ("SECTORS")},
+            {"header-backup-file", '\0', POPT_ARG_STRING, &opt_header_backup_file, 0,
+             ("File with LUKS header and keyslots backup"), NULL},
+            {"uuid", '\0', POPT_ARG_STRING, &opt_uuid, 0, ("UUID for device to use"), NULL},
+            {"header", '\0', POPT_ARG_STRING, &opt_header_device, 0, ("Device or file with separated LUKS header"),
+             NULL},
+            {"new-header", '\0', POPT_ARG_STRING, &opt_new_header_device, 0,
+             ("Device or file with separated LUKS header"), NULL},
+            {"device", '\0', POPT_ARG_STRING, &opt_device, 0, ("Device or file with separated LUKS header"), NULL},
+            {"output-file", '\0', POPT_ARG_STRING, &opt_output_file, 0, ("Output file"), NULL},
+            {"test-passphrase", '\0', POPT_ARG_NONE, &opt_test_passphrase, 0,
+             ("Do not activate device, just check passphrase"), NULL},
+            {"type", 'M', POPT_ARG_STRING, &opt_type, 0, ("Type of device metadata: luks, plain, loopaes, tcrypt"),
+             NULL},
+            {"iter-time", 'i', POPT_ARG_INT, &opt_iteration_time, 0, ("PBKDF iteration time for LUKS (in ms)"),
+             ("msecs")},
+            {"sector-size", '\0', POPT_ARG_INT, &opt_sector_size, 0, ("Encryption sector size (default: 512 bytes)"),
+             NULL},
+            POPT_TABLEEND
+    };
     poptContext popt_context;
-    struct action_type* action;
-    const char* aname;
+    struct action_type *action;
+    const char *aname;
     int r, total_keyfiles = 0;
 
     setlocale(LC_ALL, "");
     bindtextdomain(PACKAGE, LOCALEDIR);
     textdomain(PACKAGE);
 
-    popt_context = poptGetContext(PACKAGE, argc, (const char**)argv, popt_options, 0);
+    popt_context = poptGetContext(PACKAGE, argc, (const char **) argv, popt_options, 0);
     poptSetOtherOptionHelp(popt_context, "[OPTION...] <action> <action-specific>");
 
     while ((r = poptGetNextOpt(popt_context)) > 0) {
         unsigned long long ull_value;
-        char* endp;
+        char *endp;
 
         if (r == 6) {
-            const char* kf = poptGetOptArg(popt_context);
-            if (Utils::isStdin(kf))
-                opt_keyfile_stdin = kf;
-            else if (opt_keyfiles_count < MAX_KEYFILES)
+            const char *kf = poptGetOptArg(popt_context);
+        if (opt_keyfiles_count < MAX_KEYFILES)
                 opt_keyfiles[opt_keyfiles_count++] = kf;
             total_keyfiles++;
             continue;
@@ -216,21 +206,11 @@ int main(int argc, char* argv[]) {
         errno = 0;
         ull_value = strtoull(popt_tmp, &endp, 0);
         if (*endp || !*popt_tmp || !isdigit(*popt_tmp) ||
-                (errno == ERANGE && ull_value == ULLONG_MAX) ||
-                (errno != 0 && ull_value == 0))
+            (errno == ERANGE && ull_value == ULLONG_MAX) ||
+            (errno != 0 && ull_value == 0))
             r = POPT_ERROR_BADNUMBER;
 
         switch (r) {
-            case 1:
-                opt_size = ull_value;
-                break;
-            case 2:
-                opt_offset = ull_value;
-                break;
-            case 3:
-                opt_skip = ull_value;
-                opt_skip_valid = 1;
-                break;
             case 4:
                 opt_keyfile_offset = ull_value;
                 break;
@@ -244,7 +224,7 @@ int main(int argc, char* argv[]) {
     }
 
     if (r < -1)
-        usage(popt_context, EXIT_FAILURE, poptStrerror(r),poptBadOption(popt_context, POPT_BADOPTION_NOALIAS));
+        usage(popt_context, EXIT_FAILURE, poptStrerror(r), poptBadOption(popt_context, POPT_BADOPTION_NOALIAS));
 
     if (opt_version_mode) {
         Logger::info("%s %s\n", PACKAGE_NAME, PACKAGE_VERSION);

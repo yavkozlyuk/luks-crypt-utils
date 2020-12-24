@@ -23,6 +23,7 @@ struct PbkdfLimits {
 
 
 static int parsePbkdf(const char *s, const char **pbkdf);
+
 //static uint32_t adjusted_phys_memory(void)
 static uint32_t adjustedPhysMemory(void);
 
@@ -31,14 +32,19 @@ static uint32_t adjustedPhysMemory(void);
      */
 //int verify_pbkdf_params(LuksDevice *device,
 int verifyPbkdfParams(LuksDevice *device, const struct PbkdfType *pbkdf);
+
 //init_pbkdf_type
-int initPbkdfType(LuksDevice *device,const struct PbkdfType *pbkdf,const char *dev_type);
+int initPbkdfType(LuksDevice *device, const struct PbkdfType *pbkdf, const char *dev_type);
+
 //crypt_set_pbkdf_type
 int setPbkdfType(LuksDevice *device, const struct PbkdfType *pbkdf);
+
 //crypt_get_pbkdf_default
 const struct PbkdfType *getPbkdfDefault(const char *type);
+
 //crypt_set_iteration_time
 void setIterationTime(LuksDevice *device, uint64_t iteration_time_ms);
+
 int setPbkdfParams(LuksDevice *device, const char *devType);
 
 #endif // PBKDF_H

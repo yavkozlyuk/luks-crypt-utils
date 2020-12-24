@@ -11,7 +11,7 @@
 
 #if defined(HAVE_ENDIAN_H)
 #  include <endian.h>
-#elif defined(HAVE_SYS_ENDIAN_H)	/* BSDs have them here */
+#elif defined(HAVE_SYS_ENDIAN_H)    /* BSDs have them here */
 #  include <sys/endian.h>
 #endif
 
@@ -109,10 +109,10 @@
 #endif
 
 #ifndef setbit
-# define setbit(a,i)	((a)[(i)/NBBY] |= 1<<((i)%NBBY))
-# define clrbit(a,i)	((a)[(i)/NBBY] &= ~(1<<((i)%NBBY)))
-# define isset(a,i)	((a)[(i)/NBBY] & (1<<((i)%NBBY)))
-# define isclr(a,i)	(((a)[(i)/NBBY] & (1<<((i)%NBBY))) == 0)
+# define setbit(a, i)    ((a)[(i)/NBBY] |= 1<<((i)%NBBY))
+# define clrbit(a, i)    ((a)[(i)/NBBY] &= ~(1<<((i)%NBBY)))
+# define isset(a, i)    ((a)[(i)/NBBY] & (1<<((i)%NBBY)))
+# define isclr(a, i)    (((a)[(i)/NBBY] & (1<<((i)%NBBY))) == 0)
 #endif
 
 

@@ -3,75 +3,52 @@
 #include "utils.h"
 #include "pbkdf.h"
 
-extern Logger* logger;
-extern const char** action_argv;
+extern Logger *logger;
+extern const char **action_argv;
 extern int action_argc;
-extern const char* null_action_argv[];
+extern const char *null_action_argv[];
 
 extern struct PbkdfType defaultLuks1;
 
-
-const char* opt_master_key_file = NULL;
-const char* opt_header_backup_file = NULL;
-const char* opt_key_file = NULL;
-const char* opt_keyfile_stdin = NULL;
+const char *opt_master_key_file = NULL;
+const char *opt_header_backup_file = NULL;
+const char *opt_key_file = NULL;
 int opt_keyfiles_count = 0;
-const char* opt_keyfiles[MAX_KEYFILES];
-const char* opt_uuid = NULL;
-const char* opt_header_device = NULL;
-const char* opt_device = NULL;
-const char* opt_output_file = NULL;
-const char* opt_type = "luks1";
+const char *opt_keyfiles[MAX_KEYFILES];
+const char *opt_uuid = NULL;
+const char *opt_header_device = NULL;
+const char *opt_new_header_device = NULL;
+const char *opt_device = NULL;
+const char *opt_output_file = NULL;
+const char *opt_type = "luks1";
 int opt_key_size = 0;
 long opt_keyfile_size = 0;
-const char* opt_new_key_file = NULL;
+const char *opt_new_key_file = NULL;
 long opt_new_keyfile_size = 0;
 uint64_t opt_keyfile_offset = 0;
 uint64_t opt_new_keyfile_offset = 0;
 int opt_key_slot = CRYPT_ANY_SLOT;
-int opt_token = CRYPT_ANY_TOKEN;
-int opt_token_only = 0;
-uint64_t opt_size = 0;
-uint64_t opt_offset = 0;
-uint64_t opt_skip = 0;
-int opt_skip_valid = 0;
-int opt_readonly = 0;
 int opt_version_mode = 0;
 int opt_timeout = 60;
-int opt_tries = 3;
 int opt_align_payload = 0;
-int opt_random = 0;
-int opt_urandom = 0;
 int opt_dump_master_key = 0;
-int opt_shared = 0;
-int opt_allow_discards = 0;
 int opt_perf_same_cpu_crypt = 0;
-int opt_perf_submit_from_crypt_cpus = 0;
 int opt_test_passphrase = 0;
-int opt_deferred_remove = 0;
 //FIXME: check uint32 overflow for long type
-const char* opt_pbkdf = NULL;
+const char *opt_pbkdf = NULL;
 int opt_iteration_time = 0;
-int opt_disable_locks = 0;
-int opt_disable_keyring = 0;
-const char* opt_priority = NULL; /* normal */
-const char* opt_key_description = NULL;
 int opt_sector_size = SECTOR_SIZE;
-int opt_persistent = 0;
-const char* opt_label = NULL;
-const char* opt_subsystem = NULL;
-int opt_unbound = 0;
 int opt_verbose = 1;
 int opt_debug = 1;
-const char* opt_hash = NULL;
-const char* opt_cipher = NULL;
+const char *opt_hash = NULL;
+const char *opt_cipher = NULL;
 int opt_verify_passphrase = 1;
 
 long opt_pbkdf_memory = DEFAULT_LUKS2_MEMORY_KB;
 long opt_pbkdf_parallel = DEFAULT_LUKS2_PARALLEL_THREADS;
 long opt_pbkdf_iterations = 0;
 
-const char* luksType(const char* type) {
+const char *luksType(const char *type) {
     if (type && !strcmp(type, "luks2"))
         return CRYPT_LUKS2;
 
@@ -86,19 +63,11 @@ const char* luksType(const char* type) {
 
     return CRYPT_LUKS; /* NULL */
 }
-struct crypt_active_device {
-    uint64_t offset;    /**< offset in sectors */
-    uint64_t iv_offset; /**< IV initialization sector */
-    uint64_t size;      /**< active device size */
-    uint32_t flags;     /**< activation flags */
-};
 
-LuksActions::LuksActions() {
-}
-
+LuksActions::LuksActions() = default;
 
 int LuksActions::action_is_luks(void) {
-    LuksDevice* device = new LuksDevice();
+    LuksDevice *device = new LuksDevice();
     int r;
     /* FIXME: argc > max should be checked for other operations as well */
     if (action_argc > 1) {
@@ -111,17 +80,43 @@ int LuksActions::action_is_luks(void) {
         goto out;
 
 
-    r = device->load(luksType(opt_type));
-out:
+    r = device->load(luksType(CRYPT_LUKS1));
+    out:
+    delete device;
+    return r;
+};
+
+int LuksActions::action_read_header(void) {
+    LuksDevice *device = new LuksDevice();
+    int r;
+
+    if (!opt_device && !opt_header_device) {
+        Logger::error("Input device/header must be given");
+        return -EINVAL;
+    }
+
+    if ((r = device->init(Utils::uuidOrDeviceHeader(NULL))))
+        goto out;
+
+    if ((r = device->load(luksType(opt_type)))) {
+        Logger::error("Device %s is not a valid LUKS device->", Utils::uuidOrDeviceHeader(NULL));
+        goto out;
+    }
+
+    if (opt_dump_master_key)
+        r = device->dumpWithKey();
+    else
+        r = device->dump();
+    out:
     delete device;
     return r;
 };
 
 int LuksActions::action_decrypt(void) {
     LuksDevice *device = new LuksDevice();
-    StorageKey* sk = new StorageKey();
-    Key* password = new Key();
-    char* outFile;
+    StorageKey *sk = new StorageKey();
+    Key *password = new Key();
+    char *outFile;
     int r;
 
     if ((r = device->init(Utils::uuidOrDeviceHeader(NULL))))
@@ -134,7 +129,8 @@ int LuksActions::action_decrypt(void) {
 
     sk->setKeySize(device->getHdr()->getKeyBytes());
 
-    r = password->readKey(NULL, opt_keyfile_offset, opt_keyfile_size, opt_key_file, opt_timeout, 0, 0, device->getPath());
+    r = password->readKey(NULL, opt_keyfile_offset, opt_keyfile_size, opt_key_file, opt_timeout, 0, 0,
+                          device->getPath());
 
     if (r < 0)
         goto out;
@@ -149,15 +145,13 @@ int LuksActions::action_decrypt(void) {
     Logger::keyslotMsg(r, UNLOCKED);
     if (opt_output_file) {
         outFile = strdup(opt_output_file);
-        r = device->decryptBlockwise(opt_output_file, device->getHdr()->getPayloadOffset());
-    }
-    else {
-        outFile = (char*)malloc(1024);
-        sprintf(outFile, "%s_decrypted", (const char*)device->getPath());
+    } else {
+        outFile = (char *) malloc(1024);
+        sprintf(outFile, "%s_decrypted", (const char *) device->getPath());
         outFile[1023] = '\0';
-        r = device->decryptBlockwise(outFile, device->getHdr()->getPayloadOffset());
     }
-out:
+    r = device->decryptBlockwise(outFile, device->getHdr()->getPayloadOffset());
+    out:
     if (r == 0)
         Logger::info("Device %s was successfully decrypted. Outfile: %s", device->getPath(), outFile);
     delete device;
@@ -168,36 +162,15 @@ out:
     return r;
 };
 
-
-
-int LuksActions::action_read_header(void) {
-    LuksDevice *device = new LuksDevice();
-    int r;
-
-    if ((r = device->init(Utils::uuidOrDeviceHeader(NULL))))
-        goto out;
-
-    if ((r = device->load(luksType(opt_type)))) {
-        Logger::error("Device %s is not a valid LUKS device->", Utils::uuidOrDeviceHeader(NULL));
-        goto out;
-    }
-
-    if (opt_dump_master_key)
-        r = device->dumpWithKey();
-    else
-        r = device->dump();
-out:
-    delete device;
-    return r;
-};
-
 int LuksActions::action_reencrypt(void) { return 0; };
+
 int LuksActions::action_encrypt(void) {
     int r = -EINVAL, keysize, fd, created = 0;
     struct stat st;
-    const char* devicePath, * type; char* outFile, * msg = NULL;
+    const char *devicePath, *type;
+    char *outFile, *msg = NULL;
     char cipher[MAX_CIPHER_LEN], cipher_mode[MAX_CIPHER_LEN];
-    Key* key = NULL, * password = NULL;
+    Key *key = NULL, *password = NULL;
     /* Create header file (must contain at least one sector)? */
 
     if (!opt_device) {
@@ -207,10 +180,9 @@ int LuksActions::action_encrypt(void) {
 
     if (opt_output_file) {
         outFile = strdup(opt_output_file);
-    }
-    else {
-        outFile = (char*)malloc(1024);
-        sprintf(outFile, "%s_encrypted", (const char*)opt_device);
+    } else {
+        outFile = (char *) malloc(1024);
+        sprintf(outFile, "%s_encrypted", (const char *) opt_device);
         outFile[1023] = '\0';
     }
     if (outFile && stat(outFile, &st) < 0 && errno == ENOENT) {
@@ -234,11 +206,11 @@ int LuksActions::action_encrypt(void) {
     }
 
     LuksDevice *device = new LuksDevice();
-    void* params;
+    void *params;
     struct Luks1Params params1 = {
-        .hash = opt_hash ? : DEFAULT_LUKS1_HASH,
-                .dataAlignment = (size_t)opt_align_payload,
-                .dataDevice = opt_header_device ? action_argv[0] : NULL,
+            .hash = opt_hash ?: DEFAULT_LUKS1_HASH,
+            .dataAlignment = (size_t) opt_align_payload,
+            .dataDevice = opt_header_device ? action_argv[0] : NULL,
     };
     type = luksType(opt_type);
     if (!type)
@@ -256,9 +228,9 @@ int LuksActions::action_encrypt(void) {
         r = -EINVAL;
         goto out;
     }
-    devicePath = opt_device ? : action_argv[0];
+    devicePath = opt_device ?: action_argv[0];
 
-    r = Utils::parseCipherNameAndMode(opt_cipher ? : DEFAULT_CIPHER(LUKS1), cipher, NULL, cipher_mode);
+    r = Utils::parseCipherNameAndMode(opt_cipher ?: DEFAULT_CIPHER(LUKS1), cipher, NULL, cipher_mode);
     if (r < 0) {
         Logger::error("No known cipher specification pattern detected.");
         goto out;
@@ -281,10 +253,11 @@ int LuksActions::action_encrypt(void) {
             goto out;
     }
 
-    keysize = (opt_key_size ? : DEFAULT_LUKS1_KEYBITS) / 8;
+    keysize = (opt_key_size ?: DEFAULT_LUKS1_KEYBITS) / 8;
 
     password = new Key();
-    r = password->readKey(NULL, opt_keyfile_offset, opt_keyfile_size, opt_key_file, opt_timeout, 0, 0, device->getPath());
+    r = password->readKey(NULL, opt_keyfile_offset, opt_keyfile_size, opt_key_file, opt_timeout, 0, 0,
+                          device->getPath());
     if (r < 0)
         goto out;
 
@@ -304,7 +277,7 @@ int LuksActions::action_encrypt(void) {
         Logger::error("Failed to set pbkdf parameters.");
         goto out;
     }
-    r = device->createHeader(cipher, cipher_mode, opt_uuid, key, (Luks1Params*)params);
+    r = device->createHeader(cipher, cipher_mode, opt_uuid, key, (Luks1Params *) params);
     Utils::checkSignal(&r);
     if (r < 0)
         goto out;
@@ -313,24 +286,23 @@ int LuksActions::action_encrypt(void) {
 
     Logger::keyslotMsg(r, CREATED);
     device->encryptBlockwise(devicePath, device->getHdr()->getPayloadOffset());
-out:
+    out:
     delete (key);
     delete (password);
     delete device;
     return r;
 }
 
-
-
-
-
-int LuksActions::action_luksAddKey() {
+int LuksActions::action_addKey() {
     int r = -EINVAL, keysize = 0;
-    StorageKey* key = NULL;
-    const char* newKeyFile = (action_argc > 1 ? action_argv[1] : NULL);
-    Key* password = NULL,* newPassword = NULL;
-    LuksDevice* luksDevice = new LuksDevice();
+    StorageKey *key = NULL;
+    Key *password = NULL, *newPassword = NULL;
+    LuksDevice *luksDevice = new LuksDevice();
 
+    if (!opt_device && !opt_header_device) {
+        Logger::error("Input device/header must be given");
+        return -EINVAL;
+    }
 
     if ((r = luksDevice->init(Utils::uuidOrDeviceHeader(NULL))))
         goto out;
@@ -358,26 +330,29 @@ int LuksActions::action_luksAddKey() {
         if (r < 0)
             goto out;
         newPassword = new Key();
-        r = newPassword->readKey("Enter new passphrase for key slot: ", opt_new_keyfile_offset, opt_new_keyfile_size,opt_new_key_file, opt_timeout,1, 1, luksDevice->getPath());
+        r = newPassword->readKey("Enter new passphrase for key slot: ", opt_new_keyfile_offset, opt_new_keyfile_size,
+                                 opt_new_key_file, opt_timeout, 1, 1, luksDevice->getPath());
         if (r < 0)
             goto out;
 
         r = luksDevice->addKeySlotByStorageKey(opt_key_slot, key, newPassword);
     } else if (opt_key_file && !Utils::isStdin(opt_key_file) &&
                opt_new_key_file && !Utils::isStdin(opt_new_key_file)) {
-        r = luksDevice->addKeySlotByKeyFileDeviceOffset(opt_key_slot,opt_key_file, opt_keyfile_size, opt_keyfile_offset,
+        r = luksDevice->addKeySlotByKeyFileDeviceOffset(opt_key_slot, opt_key_file, opt_keyfile_size,
+                                                        opt_keyfile_offset,
                                                         opt_new_key_file, opt_new_keyfile_size, opt_new_keyfile_offset);
         Logger::passphraseMsg(r);
     } else {
         password = new Key();
-        r = password->readKey("Enter any existing passphrase: ",opt_keyfile_offset, opt_keyfile_size, opt_key_file, opt_timeout, 0, 0, luksDevice->getPath());
+        r = password->readKey("Enter any existing passphrase: ", opt_keyfile_offset, opt_keyfile_size, opt_key_file,
+                              opt_timeout, 0, 0, luksDevice->getPath());
 
         if (r < 0)
             goto out;
 
         /* Check password before asking for new one */
         StorageKey *testKey = new StorageKey();
-        r = luksDevice->readKeyWithHdr(CRYPT_ANY_SLOT,password, &testKey);
+        r = luksDevice->readKeyWithHdr(CRYPT_ANY_SLOT, password, &testKey);
         Utils::checkSignal(&r);
         Logger::passphraseMsg(r);
         delete testKey;
@@ -386,13 +361,14 @@ int LuksActions::action_luksAddKey() {
         Logger::keyslotMsg(r, UNLOCKED);
 
         newPassword = new Key();
-        r = newPassword->readKey("Enter new passphrase for key slot: ", opt_new_keyfile_offset, opt_new_keyfile_size,opt_new_key_file, opt_timeout,1, 1, luksDevice->getPath());
+        r = newPassword->readKey("Enter new passphrase for key slot: ", opt_new_keyfile_offset, opt_new_keyfile_size,
+                                 opt_new_key_file, opt_timeout, 1, 1, luksDevice->getPath());
         if (r < 0)
             goto out;
 
         r = luksDevice->addKeySlotByPassphrase(opt_key_slot, password, newPassword);
     }
-out:
+    out:
     Logger::keyslotMsg(r, CREATED);
     if (password) delete password;
     if (newPassword) delete newPassword;
@@ -401,9 +377,10 @@ out:
     return r;
 }
 
-int LuksActions::action_luksRemoveKey() {
-    LuksDevice* luksDevice = new LuksDevice();StorageKey *testKey = NULL;
-    Key* password = NULL;
+int LuksActions::action_removeKey() {
+    LuksDevice *luksDevice = new LuksDevice();
+    StorageKey *testKey = NULL;
+    Key *password = NULL;
     int r;
 
     if ((r = luksDevice->init(Utils::uuidOrDeviceHeader(NULL))))
@@ -414,14 +391,14 @@ int LuksActions::action_luksRemoveKey() {
         goto out;
     }
     password = new Key();
-    r = password->readKey("Enter new passphrase to be deleted: ", opt_keyfile_offset, opt_keyfile_size,opt_key_file, opt_timeout,0, 0, luksDevice->getPath());
+    r = password->readKey("Enter new passphrase to be deleted: ", opt_keyfile_offset, opt_keyfile_size, opt_key_file,
+                          opt_timeout, 0, 0, luksDevice->getPath());
     if (r < 0)
         goto out;
 
     /* Check password before asking for new one */
     testKey = new StorageKey();
-    r = luksDevice->readKeyWithHdr(CRYPT_ANY_SLOT,password, &testKey);
-
+    r = luksDevice->readKeyWithHdr(CRYPT_ANY_SLOT, password, &testKey);
     delete testKey;
     Logger::passphraseMsg(r);
     Utils::checkSignal(&r);
@@ -432,7 +409,9 @@ int LuksActions::action_luksRemoveKey() {
     opt_key_slot = r;
     Logger::warn("Key slot %d selected for deletion.", opt_key_slot);
 
-    //if (crypt_keyslot_status(cd, opt_key_slot) == CRYPT_SLOT_ACTIVE_LAST &&
+    if (luksDevice->getHdr()->getKeySlotInfo(opt_key_slot) == SLOT_ACTIVE_LAST) {
+        Logger::info("This is the last keyslot. Device will become unusable after purging this key.");
+    }
     //        !yesDialog(_("This is the last keyslot. "
     //                      "Device will become unusable after purging this key."),
     //                    _("Operation aborted, the keyslot was NOT wiped.\n"))) {
@@ -442,16 +421,17 @@ int LuksActions::action_luksRemoveKey() {
 
     r = luksDevice->destroyKeySlot(opt_key_slot);
     Logger::keyslotMsg(opt_key_slot, REMOVED);
-out:
+    out:
     if (password) delete password;
     if (luksDevice) delete luksDevice;
     return r;
 }
 
-int LuksActions::action_luksChangeKey() {
-    const char* new_key_file = (action_argc > 1 ? action_argv[1] : NULL);
-    LuksDevice* luksDevice = new LuksDevice();StorageKey *testKey = NULL;
-    Key* password = NULL,* newPassword = NULL;
+int LuksActions::action_changeKey() {
+    const char *new_key_file = (action_argc > 1 ? action_argv[1] : NULL);
+    LuksDevice *luksDevice = new LuksDevice();
+    StorageKey *testKey = NULL;
+    Key *password = NULL, *newPassword = NULL;
     int r;
 
     if ((r = luksDevice->init(Utils::uuidOrDeviceHeader(NULL))))
@@ -467,14 +447,14 @@ int LuksActions::action_luksChangeKey() {
         goto out;
     }
     password = new Key();
-    r = password->readKey("Enter passphrase to be changed: ",opt_keyfile_offset, opt_keyfile_size, opt_key_file,
+    r = password->readKey("Enter passphrase to be changed: ", opt_keyfile_offset, opt_keyfile_size, opt_key_file,
                           opt_timeout, 0, 0, luksDevice->getPath());
     if (r < 0)
         goto out;
 
     /* Check password before asking for new one */
     testKey = new StorageKey();
-    r = luksDevice->readKeyWithHdr(CRYPT_ANY_SLOT,password, &testKey);
+    r = luksDevice->readKeyWithHdr(CRYPT_ANY_SLOT, password, &testKey);
     Utils::checkSignal(&r);
     Logger::passphraseMsg(r);
     delete testKey;
@@ -485,23 +465,21 @@ int LuksActions::action_luksChangeKey() {
     r = newPassword->readKey("Enter new passphrase: ",
                              opt_new_keyfile_offset, opt_new_keyfile_size,
                              opt_new_key_file,
-                             opt_timeout,1, 1, luksDevice->getPath());;
+                             opt_timeout, 1, 1, luksDevice->getPath());;
     if (r < 0)
         goto out;
 
-    r = luksDevice->changeKeySlotByPassphrase(opt_key_slot, opt_key_slot,password, newPassword);
+    r = luksDevice->changeKeySlotByPassphrase(opt_key_slot, opt_key_slot, password, newPassword);
     Logger::keyslotMsg(r, CREATED);
-out:
+    out:
     if (password) delete password;
     if (newPassword) delete newPassword;
     if (luksDevice) delete luksDevice;
     return r;
 }
 
-
-
-int LuksActions::action_luksKillSlot() {
-    LuksDevice* luksDevice = new LuksDevice();
+int LuksActions::action_killSlot() {
+    LuksDevice *luksDevice = new LuksDevice();
     KeySlotInfo ki;
     int r;
 
@@ -518,10 +496,10 @@ int LuksActions::action_luksKillSlot() {
         case SLOT_ACTIVE_LAST:
         case SLOT_ACTIVE:
         case SLOT_UNBOUND:
-            Logger::warn("Keyslot %d is selected for deletion.",opt_key_slot);
+            Logger::warn("Keyslot %d is selected for deletion.", opt_key_slot);
             break;
         case SLOT_INACTIVE:
-            Logger::error("Keyslot %d is not active.",opt_key_slot);
+            Logger::error("Keyslot %d is not active.", opt_key_slot);
             /* fall through */
         case SLOT_INVALID:
             r = -EINVAL;
@@ -531,60 +509,14 @@ int LuksActions::action_luksKillSlot() {
 
     r = luksDevice->destroyKeySlot(opt_key_slot);
     Logger::keyslotMsg(opt_key_slot, REMOVED);
-out:
+    out:
     if (luksDevice) delete luksDevice;
     return r;
 }
 
-static int action_luksRemoveKey(void) {
-    LuksDevice* luksDevice = NULL;StorageKey *testKey = NULL;
-    Key* password = NULL;
-    int r;
-
-    if ((r = luksDevice->init(Utils::uuidOrDeviceHeader(NULL))))
-        goto out;
-
-    if ((r = luksDevice->load(luksType(opt_type)))) {
-        Logger::error("Device %s is not a valid LUKS device->", Utils::uuidOrDeviceHeader(NULL));
-        goto out;
-    }
-    password = new Key();
-    r = password->readKey("Enter passphrase to be deleted: ",opt_keyfile_offset, opt_keyfile_size, opt_key_file,
-                          opt_timeout, 0, 0, luksDevice->getPath());
-    if (r < 0)
-        goto out;
-
-    /* Check password before asking for new one */
-    testKey = new StorageKey();
-    r = luksDevice->readKeyWithHdr(CRYPT_ANY_SLOT,password, &testKey);
-    Utils::checkSignal(&r);
-    Logger::passphraseMsg(r);
-    delete testKey;
-
-    if (r < 0)
-        goto out;
-    Logger::keyslotMsg(r, UNLOCKED);
-
-    opt_key_slot = r;
-    Logger::warn("Key slot %d selected for deletion.", opt_key_slot);
-
-    if (luksDevice->getHdr()->getKeySlotInfo(opt_key_slot) == SLOT_ACTIVE_LAST) {
-        Logger::info("This is the last keyslot. Device will become unusable after purging this key.");
-        r = -EPERM;
-        goto out;
-    }
-
-    r = luksDevice->destroyKeySlot(opt_key_slot);
-    Logger::keyslotMsg(opt_key_slot, REMOVED);
-out:
-    if (password) delete password;
-    if (luksDevice) delete luksDevice;
-    return r;
-}
-
-int LuksActions::action_luksUUID() {
-    LuksDevice* luksDevice = new LuksDevice();
-    const char* existing_uuid = NULL;
+int LuksActions::action_UUID() {
+    LuksDevice *luksDevice = new LuksDevice();
+    const char *existing_uuid = NULL;
     int r;
 
     if ((r = luksDevice->init(Utils::uuidOrDeviceHeader(NULL))))
@@ -599,13 +531,52 @@ int LuksActions::action_luksUUID() {
         if (!r) luksDevice->writeHdr();
     } else {
         existing_uuid = luksDevice->getHdr()->getUUID();
-        Logger::info("%s\n", existing_uuid ? : "");
+        Logger::info("%s\n", existing_uuid ?: "");
         r = existing_uuid ? 0 : 1;
     }
-out:
+    out:
     delete luksDevice;
     return r;
 
+}
+
+int LuksActions::action_headerBackup(void) {
+    LuksDevice *luksDevice = new LuksDevice();
+        int r;
+
+        if (!opt_header_backup_file) {
+            Logger::error("Option --header-backup-file is required.");
+            goto out;
+            r = -EINVAL;
+        }
+
+
+        if ((r = luksDevice->init(Utils::uuidOrDeviceHeader(NULL))))
+            goto out;
+
+        r = luksDevice->backupHeader(opt_header_backup_file);
+    out:
+        delete luksDevice;
+        return r;
+}
+
+int LuksActions::action_headerRestore(void) {
+    LuksDevice *luksDevice = new LuksDevice();
+        int r = 0;
+
+        if (!opt_header_backup_file) {
+            Logger::error("Option --header-backup-file is required.");
+            goto out;
+            r = -EINVAL;
+        }
+
+        if ((r = luksDevice->init(Utils::uuidOrDeviceHeader(NULL))))
+            goto out;
+
+        r = luksDevice->restoreHeader(opt_header_backup_file);
+    out:
+        delete luksDevice;
+        return r;
 }
 
 
