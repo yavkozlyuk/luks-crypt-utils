@@ -14,6 +14,7 @@ StorageKey::StorageKey() : Key() {
 StorageKey::StorageKey(size_t keylength, const char *key) : Key(keylength, key) {
     this->id = -1;
     this->next = NULL;
+    this->description = NULL;
 }
 
 StorageKey::StorageKey(StorageKey &key) : Key(key) {

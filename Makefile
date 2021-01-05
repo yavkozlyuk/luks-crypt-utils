@@ -85,6 +85,7 @@ OBJECTS       = afutils.o \
 		storagekey.o \
 		utils.o
 DIST          = Makefile \
+		README.md \
 		/usr/lib/x86_64-linux-gnu/qt5/mkspecs/features/spec_pre.prf \
 		/usr/lib/x86_64-linux-gnu/qt5/mkspecs/common/unix.conf \
 		/usr/lib/x86_64-linux-gnu/qt5/mkspecs/common/linux.conf \
@@ -272,7 +273,12 @@ cipher.o: src/cipher.cpp src/cipher.h \
 		src/luksconstants.h \
 		src/config.h \
 		src/utils.h \
-		src/afutils.h
+		src/afutils.h \
+		src/logger.h \
+		src/opensslcryptoprovider.h \
+		src/key.h \
+		src/lukspartitionheader.h \
+		src/storagekey.h
 	$(CXX) -c $(CXXFLAGS) $(INCPATH) -o cipher.o src/cipher.cpp
 
 hashfunction.o: src/hashfunction.cpp src/hashfunction.h \
@@ -384,7 +390,8 @@ opensslcryptoprovider.o: src/opensslcryptoprovider.cpp src/opensslcryptoprovider
 		src/config.h \
 		src/storagekey.h \
 		src/utils.h \
-		src/afutils.h
+		src/afutils.h \
+		src/logger.h
 	$(CXX) -c $(CXXFLAGS) $(INCPATH) -o opensslcryptoprovider.o src/opensslcryptoprovider.cpp
 
 pbkdf.o: src/pbkdf.cpp src/pbkdf.h \

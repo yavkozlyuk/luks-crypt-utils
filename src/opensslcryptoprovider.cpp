@@ -5,7 +5,6 @@
 #include <openssl/err.h>
 #include <openssl/hmac.h>
 #include <openssl/rand.h>
-#include <openssl/engine.h>
 #include "utils.h"
 #include "logger.h"
 #define T(e) if (!(e)) {\
@@ -14,8 +13,12 @@
     }
 static int providerInitialized = 0;
 
+static ENGINE *eng = NULL;
 OpenSSLCryptoProvider::OpenSSLCryptoProvider() {
 
+}
+
+OpenSSLCryptoProvider::~OpenSSLCryptoProvider(){
 }
 
 int OpenSSLCryptoProvider::initProvider() {
@@ -25,7 +28,7 @@ int OpenSSLCryptoProvider::initProvider() {
     setenv("OPENSSL_ENGINES", "/usr/lib/x86_64-linux-gnu/", 0);
     OPENSSL_add_all_algorithms_conf();
     ERR_load_crypto_strings();
-    ENGINE *eng;
+    Logger::debug("Initializing openssl GOST engine");
     T(eng = ENGINE_by_id("gost"));
     T(ENGINE_init(eng));
     T(ENGINE_set_default(eng, ENGINE_METHOD_ALL));
@@ -33,6 +36,14 @@ int OpenSSLCryptoProvider::initProvider() {
 
     providerInitialized = 1;
     return 0;
+}
+
+void OpenSSLCryptoProvider::destroyProvider()
+{
+    if (providerInitialized) {
+        T(ENGINE_finish(eng));
+        providerInitialized = 0;
+    }
 }
 
 int OpenSSLCryptoProvider::pbdkf(const char *kdf, const char *hash, Key *password, const char *salt, size_t saltLength,
@@ -72,7 +83,7 @@ int OpenSSLCryptoProvider::verifyKey(const LuksPartitionHeader *hdr, Key *vk) {
         r = -EPERM;
         goto out;
     }
-    out:
+out:
     delete testKey;
     return r;
 

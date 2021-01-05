@@ -296,4 +296,27 @@ void Utils::_toLower(char *str, unsigned max_len) {
             *str = tolower(*str);
 }
 
+int Utils::confirmDialog(const char *msg, const char *failMsg) {
+    char *answer = NULL;
+    size_t size = 0;
+    int r = 1;
+
+
+    if (isatty(STDIN_FILENO)) {
+        Logger::info("\nWARNING!\n========\n");
+        Logger::info("%s\n\nAre you sure? (Type uppercase yes): ", msg);
+        fflush(stdout);
+        if(getline(&answer, &size, stdin) == -1) {
+            r = 0;
+            Logger::error("Error reading response from terminal.");
+        } else if (strcmp(answer, "YES\n")) {
+            r = 0;
+            if (failMsg)
+                Logger::error("%s", failMsg);
+        }
+    }
+
+    free(answer);
+    return r;
+}
 

@@ -78,6 +78,8 @@ public:
     static size_t sizeRoundUp(size_t size, size_t block);
 
     static void _toLower(char *str, unsigned max_len);
+
+    static int confirmDialog(const char *msg, const char* failMsg);
 };
 
 

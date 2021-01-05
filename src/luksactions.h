@@ -70,7 +70,7 @@ public:
 
     static int action_decrypt(void);
 
-    static int action_read_header(void);
+    static int action_readHeader(void);
 
     static int action_reencrypt(void);
 

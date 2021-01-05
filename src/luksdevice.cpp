@@ -1,4 +1,4 @@
-#include "luksdevice.h"
+﻿#include "luksdevice.h"
 
 
 #include "pbkdf.h"
@@ -48,10 +48,10 @@ LuksDevice::~LuksDevice() {
         free(this->type);
     if (this->pbkdf.hash)
         free(CONST_CAST(void*)this->pbkdf.hash);
-    //if (this->pbkdf.type)
-    //    free(CONST_CAST(void*)this->pbkdf.type);
+    if (this->pbkdf.type)
+        free(CONST_CAST(void*)this->pbkdf.type);
     if (this->storageKey)
-           this->storageKey.reset();
+        this->storageKey.reset();
 }
 
 int LuksDevice::init(const char* devicePath) {
@@ -100,8 +100,7 @@ int LuksDevice::load(const char* requested_type, int require_header, int repair)
         if (this->hdr)
             delete this->hdr;
         this->hdr = luksHdr;
-    }
-    else {
+    } else {
         if (version > 2)
             Logger::error("Unsupported LUKS version %d.", version);
         r = -EINVAL;
@@ -538,8 +537,6 @@ static int verifyOrFindEmptyKeySlot(LuksDevice* device, int* keyslot) {
     if (*keyslot == CRYPT_ANY_SLOT) {
         if (Utils::isLUKS1(device->getType()))
             *keyslot = LuksPartitionHeader::findEmptyKeySlot(device->getHdr());
-        //else
-        //	*keyslot = LUKS2_keyslot_find_empty(&cd->u.luks2.hdr, "luks2");
         if (*keyslot < 0) {
             Logger::error("All key slots full.");
             return -EINVAL;
@@ -561,7 +558,7 @@ static int verifyOrFindEmptyKeySlot(LuksDevice* device, int* keyslot) {
     Logger::debug("Selected keyslot %d.", *keyslot);
     return 0;
 }
-int LuksDevice::addKeySlotByStorageKey(int keyslot, StorageKey* key, Key* password) {
+int LuksDevice::addKeySlotByStorageKey(int keyslot, Key* password) {
     StorageKey* vk = NULL;
     int r;
 
@@ -944,7 +941,7 @@ int LuksDevice::readStorageKey(int keyslot, Key* passphrase) {
         Logger::error("This operation is not supported for %s crypt device.", this->type ? : "(none)");
 
     if (r >= 0) {
-       this->setStorageKey(new StorageKey(*sk));
+        this->setStorageKey(new StorageKey(*sk));
     }
 out:
     delete sk;
@@ -1049,7 +1046,7 @@ int LuksDevice::encryptBlockwise(const char* srcPath, unsigned int sector) {
         r = -EINVAL;
         goto out;
     }
-    //2096640
+
     r = luksStorage.init(SECTOR_SIZE, this->hdr->getCipherName(), this->hdr->getCipherMode(), this->storageKey.get());
 
     if (r) {
@@ -1057,8 +1054,6 @@ int LuksDevice::encryptBlockwise(const char* srcPath, unsigned int sector) {
                       this->hdr->getCipherName(), this->hdr->getCipherMode(), r);
         goto out;
     }
-    Logger::debug("Using userspace crypto wrapper to access keyslot area.");
-
     /* Read buffer from device */
     devfd = open(srcPath, O_RDONLY);
     if (devfd < 0) {
@@ -1073,11 +1068,7 @@ int LuksDevice::encryptBlockwise(const char* srcPath, unsigned int sector) {
         close(devfd);
         goto out;
     }
-    //for (unsigned int i = 0; i < deviceSize; i+=luksStorage.getSectorSize()) {
-    Logger::debug("Decrypting: %ui out of %ui processed", offset * SECTOR_SIZE, deviceSize);
     encryptBlockwise(devfd, outfd, &luksStorage, deviceSize, offset++, outOffset++);
-    //}
-
     close(devfd); close(outfd);
 
 out:
@@ -1098,7 +1089,6 @@ int LuksDevice::decryptBlockwise(const char* dstPath, unsigned int sector) {
         r = -EINVAL;
         goto out;
     }
-    //2096640
     r = luksStorage.init(SECTOR_SIZE, this->hdr->getCipherName(), this->hdr->getCipherMode(), this->storageKey.get());
 
     if (r) {
@@ -1106,7 +1096,6 @@ int LuksDevice::decryptBlockwise(const char* dstPath, unsigned int sector) {
                       this->hdr->getCipherName(), this->hdr->getCipherMode(), r);
         goto out;
     }
-    Logger::debug("Using userspace crypto wrapper to access keyslot area.");
 
     /* Read buffer from device */
     devfd = open(this->path, O_RDONLY);
@@ -1122,10 +1111,8 @@ int LuksDevice::decryptBlockwise(const char* dstPath, unsigned int sector) {
         close(devfd);
         goto out;
     }
-    //for (unsigned int i = 0; i < deviceSize; i+=luksStorage.getSectorSize()) {
-    Logger::debug("Decrypting: %ui out of %ui processed", offset * SECTOR_SIZE, deviceSize);
     decryptBlockwise(devfd, outfd, &luksStorage, deviceSize, offset++, outOffset++);
-    //}
+
 
     close(devfd); close(outfd);
 
@@ -1154,8 +1141,6 @@ int LuksDevice::decrypt(unsigned char* dst, size_t dstLength, const char* cipher
                       this->hdr->getCipherName(), this->hdr->getCipherMode(), r);
         goto out;
     }
-
-    Logger::debug("Using userspace crypto wrapper to access keyslot area.");
 
     /* Read buffer from device */
     devfd = open(this->path, O_RDONLY);
@@ -1205,7 +1190,6 @@ int LuksDevice::encrypt(unsigned char* src, size_t srcLength, StorageKey* vk, un
         goto out;
     }
 
-    Logger::debug("Using userspace crypto wrapper to access keyslot area.");
 
 
     r = luksStorage->encrypt(0, srcLength / SECTOR_SIZE, src);
@@ -1227,7 +1211,6 @@ int LuksDevice::encrypt(unsigned char* src, size_t srcLength, StorageKey* vk, un
     r = 0;
 out:
     if (devfd >= 0) {
-        //device_sync(device, devfd);
         close(devfd);
     }
     if (r)
@@ -1237,11 +1220,223 @@ out:
 }
 
 int LuksDevice::backupHeader(const char *backupFile) {
+    int r;
 
+    if (!backupFile)
+        return -EINVAL;
+    /* Load with repair */
+    r = this->load("LUKS1", 1, 0);
+    if (r < 0)
+        return r;
+
+    Logger::debug("Requested header backup of device %s (luks1) to file %s.", this->path, backupFile);
+    //r = LUKS_hdr_backup(backupFile, cd);
+    LuksPartitionHeader *phdr = new LuksPartitionHeader();
+    int  devfd = -1;
+    size_t hdr_size;
+    size_t buffer_size;
+    char *buffer = NULL;
+
+    r = this->readHdr(phdr, 1,0);
+    if (r) {
+        goto out;
+    }
+
+    hdr_size = deviceSectors(phdr) << SECTOR_SHIFT;
+    buffer_size = Utils::sizeRoundUp(hdr_size, Utils::getPageSize());
+
+    buffer = (char *)Utils::safeAlloc(buffer_size);
+    if (!buffer || hdr_size < LUKS_ALIGN_KEYSLOTS || hdr_size > buffer_size) {
+        r = -ENOMEM;
+        goto out;
+    }
+
+    Logger::debug("Storing backup of header (%zu bytes) and keyslot area (%zu bytes).",
+                  sizeof(LuksPartitionHeader), hdr_size - LUKS_ALIGN_KEYSLOTS);
+
+    Logger::debug("Output backup file size: %zu bytes.", buffer_size);
+
+    devfd = open(this->path, O_RDONLY);
+    if (devfd < 0) {
+        Logger::error("Device %s is not a valid LUKS device.", this->getPath());
+        r = -EINVAL;
+        goto out;
+    }
+
+    if (IOUtils::readBlockwise(devfd, this->getBlockSize(), this->getAlignment(), buffer, hdr_size) < (ssize_t)hdr_size) {
+        r = -EIO;
+        goto out;
+    }
+    close(devfd);
+
+    /* Wipe unused area, so backup cannot contain old signatures */
+    if (hdr->keySlots[0].keyMaterialOffset * SECTOR_SIZE == LUKS_ALIGN_KEYSLOTS)
+        memset(buffer + sizeof(LuksPartitionHeader), 0, LUKS_ALIGN_KEYSLOTS - sizeof(LuksPartitionHeader));
+
+    devfd = open(backupFile, O_CREAT|O_EXCL|O_WRONLY, S_IRUSR);
+    if (devfd == -1) {
+        if (errno == EEXIST)
+            Logger::error("Requested header backup file %s already exists.", backupFile);
+        else
+            Logger::error("Cannot create header backup file %s.", backupFile);
+        r = -EINVAL;
+        goto out;
+    }
+    if (IOUtils::writeBuffer(devfd, buffer, buffer_size) < (ssize_t)buffer_size) {
+        Logger::error("Cannot write header backup file %s.", backupFile);
+        r = -EIO;
+        goto out;
+    }
+
+    r = 0;
+out:
+    if (devfd >= 0)
+        close(devfd);
+    delete phdr;
+    Utils::safeFree(buffer);
+    return r;
 }
 
 int LuksDevice::restoreHeader(const char *backupFile) {
+    LuksPartitionHeader* hdr1 = new LuksPartitionHeader();
+    int r, version;
 
+    if (!backupFile)
+        return -EINVAL;
+
+    Logger::debug("Requested header restore to device %s (luks1) from file %s.", this->path, backupFile);
+
+
+    if (!this->type) {
+        r = restoreHeader(backupFile, hdr1);
+    } else if (Utils::isLUKS1(this->type))
+        r = restoreHeader(backupFile, this->getHdr());
+    else
+        r = -EINVAL;
+
+    if (!r)
+        r = this->load(CRYPT_LUKS1, 1, 1);
+    delete hdr1;
+    return r;
+}
+int readPHdrBackup(LuksDevice *device, const char *backupFile, LuksPartitionHeader *hdr,int requireLuksDevice)
+{
+    ssize_t hdr_size = sizeof(LuksPartitionHeader);
+    int devfd = 0, r = 0;
+
+    Logger::debug("Reading LUKS header of size %d from backup file %s", (int)hdr_size, backupFile);
+
+    devfd = open(backupFile, O_RDONLY);
+    if (devfd == -1) {
+        Logger::debug("Cannot open header backup file %s.", backupFile);
+        return -ENOENT;
+    }
+
+    if (IOUtils::readBuffer(devfd, hdr, hdr_size) < hdr_size)
+        r = -EIO;
+    else {
+        //LUKS_fix_header_compatible(hdr);
+        r = checkAndConvertHdr(device, hdr, requireLuksDevice, 0);
+    }
+
+    close(devfd);
+    return r;
+}
+int LuksDevice::restoreHeader(const char *backupFile, LuksPartitionHeader *hdr) {
+    int r = 0, devfd = -1, diff_uuid = 0;
+    ssize_t buffer_size = 0;
+    char *buffer = NULL, msg[200];
+    LuksPartitionHeader* hdr1 = new LuksPartitionHeader();
+
+    r = readPHdrBackup(this, backupFile, hdr1, 0);
+    if (r == -ENOENT)
+        return r;
+
+    if (!r)
+        buffer_size = deviceSectors(hdr1) << SECTOR_SHIFT;
+
+    if (r || buffer_size < LUKS_ALIGN_KEYSLOTS) {
+        Logger::error("Backup file doesn't contain valid LUKS header.");
+        r = -EINVAL;
+        goto out;
+    }
+
+    buffer = (char *)Utils::safeAlloc(buffer_size);
+    if (!buffer) {
+        r = -ENOMEM;
+        goto out;
+    }
+
+    devfd = open(backupFile, O_RDONLY);
+    if (devfd == -1) {
+        Logger::error("Cannot open header backup file %s.", backupFile);
+        r = -EINVAL;
+        goto out;
+    }
+
+    if (IOUtils::readBuffer(devfd, buffer, buffer_size) < buffer_size) {
+        Logger::error("Cannot read header backup file %s.", backupFile);
+        r = -EIO;
+        goto out;
+    }
+    close(devfd);
+    devfd = -1;
+
+    r = this->readHdr(hdr, 0, 0);
+    if (r == 0) {
+        Logger::debug("Device %s already contains LUKS header, checking UUID and offset.", this->getPath());
+        if(hdr->payloadOffset != hdr1->payloadOffset ||
+                hdr->keyBytes != hdr1->keyBytes) {
+            Logger::error("Data offset or key size differs on device and backup, restore failed.");
+            r = -EINVAL;
+            goto out;
+        }
+        if (memcmp(hdr->uuid, hdr1->uuid, UUID_STRING_L))
+            diff_uuid = 1;
+    }
+    /*      if (!crypt_confirm(ctx, msg)) {
+
+        if (snprintf(msg, sizeof(msg), _("Device %s %s%s"), this->getPath(),
+             r ? _("does not contain LUKS header. Replacing header can destroy data on that device.") :
+                 _("already contains LUKS header. Replacing header will destroy existing keyslots."),
+                 diff_uuid ? _("\nWARNING: real device header has different UUID than backup!") : "") < 0) {
+            r = -ENOMEM;
+            goto out;
+        }
+
+         r = -EINVAL;
+            goto out;
+        }*/
+
+    Logger::debug("Storing backup of header (%zu bytes) and keyslot area (%zu bytes) to device %s.",
+                  sizeof(*hdr), buffer_size - LUKS_ALIGN_KEYSLOTS, this->getPath());
+
+    devfd = open(this->getPath(), O_RDWR);
+    if (devfd < 0) {
+        if (errno == EACCES)
+            Logger::error("Cannot write to device %s, permission denied.", this->getPath());
+        else
+            Logger::error("Cannot open device %s.", this->getPath());
+        r = -EINVAL;
+        goto out;
+    }
+
+    if (IOUtils::writeBlockwise(devfd, this->getBlockSize(), this->getAlignment(), buffer, buffer_size) < buffer_size) {
+        r = -EIO;
+        goto out;
+    }
+    close(devfd);
+    devfd = -1;
+
+    /* Be sure to reload new data */
+    r = this->readHdr(hdr, 1, 0);
+out:
+    if (devfd >= 0) {
+        close(devfd);
+    }
+    delete hdr1;
+    Utils::safeFree(buffer);
+    return r;
 }
 static size_t deviceFsBlockSizeFd(int fd) {
     size_t pageSize = Utils::getPageSize();
@@ -1377,7 +1572,7 @@ void LuksDevice::setStorageKey(StorageKey *key)
     if (this->storageKey)
         this->storageKey.reset();
     if (key)
-    this->storageKey = std::shared_ptr<StorageKey>(key);
+        this->storageKey = std::shared_ptr<StorageKey>(key);
 }
 
 int LuksDevice::readKParticularKeyWithHdr(int keyIndex, Key* password, StorageKey* sk) {
@@ -1386,7 +1581,7 @@ int LuksDevice::readKParticularKeyWithHdr(int keyIndex, Key* password, StorageKe
     Key* AfKey;
     int r;
 
-    Logger::debug("Trying to open heh key slot %d [%s].", keyIndex, LuksPartitionHeader::slotStateAsStr(ki));
+    Logger::debug("Trying to open key slot %d [%s].", keyIndex, LuksPartitionHeader::slotStateAsStr(ki));
 
     if (ki < SLOT_ACTIVE)
         return -ENOENT;

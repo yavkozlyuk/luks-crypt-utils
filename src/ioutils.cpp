@@ -8,7 +8,6 @@
 #include <sys/types.h>
 
 #include "utils.h"
-
 IOUtils::IOUtils() {
 
 }
@@ -116,7 +115,7 @@ ssize_t IOUtils::writeBlockwise(int fd, size_t bsize, size_t alignment, void *or
             goto out;
     }
     ret = length;
-    out:
+out:
     free(hangoverBuf);
     if (buf != origBuf)
         free(buf);
@@ -158,7 +157,7 @@ ssize_t IOUtils::readBlockwise(int fd, size_t bsize, size_t alignment, void *ori
         memcpy((char *) buf + solid, hangoverBuf, hangover);
     }
     ret = length;
-    out:
+out:
 
     free(hangoverBuf);
     if (buf != origBuf) {
@@ -217,7 +216,7 @@ ssize_t IOUtils::writeLseekBlockwise(int fd, size_t bsize, size_t alignment, voi
     ret = length ? writeBlockwise(fd, bsize, alignment, buf, length) : 0;
     if (ret >= 0)
         ret += innerCount;
-    out:
+out:
     free(frontPadBuf);
     return ret;
 }
@@ -262,7 +261,9 @@ ssize_t IOUtils::readLseekBlockwise(int fd, size_t bsize, size_t alignment, void
     ret = readBlockwise(fd, bsize, alignment, buf, length);
     if (ret >= 0)
         ret += innerCount;
-    out:
+out:
     free(frontPadBuf);
     return ret;
 }
+
+

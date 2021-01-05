@@ -23,6 +23,7 @@ public:
     static ssize_t writeLseekBlockwise(int fd, size_t bsize, size_t alignment, void *buf, size_t length, off_t offset);
 
     static ssize_t readLseekBlockwise(int fd, size_t bsize, size_t alignment, void *buf, size_t length, off_t offset);
+
 };
 
 #endif // IOUTILS_H

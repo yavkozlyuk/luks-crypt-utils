@@ -5,7 +5,7 @@
 #include "config.h"
 #include "utils.h"
 
-
+#include "opensslcryptoprovider.h"
 const char **action_argv;
 int action_argc;
 const char *null_action_argv[] = {NULL, NULL};
@@ -30,7 +30,7 @@ static struct action_type {
         {"UUID",          LuksActions::action_UUID,          1, ("<device>"),                  ("print UUID of LUKS device")},
         {"is_luks",       LuksActions::action_is_luks,       1, "<device>",                    "tests <device> for LUKS partition header"},
         {"decrypt",       LuksActions::action_decrypt,       1, "<device>",                    "decrypt LUKS <device>"},
-        {"read_header",   LuksActions::action_read_header,   1, "<device>",                    "dump LUKS partition information"},
+        {"read_header",   LuksActions::action_readHeader,   1, "<device>",                    "dump LUKS partition information"},
         {"reencrypt",     LuksActions::action_reencrypt,     1, "<device>",                    "reencrypt <device>"},
         {"encrypt",       LuksActions::action_encrypt,       1, "<device>",                    "encrypt <device>"},
         {"headerBackup",  LuksActions::action_headerBackup,  1, ("<device>"),                  ("Backup LUKS device header and keyslots")},
@@ -120,6 +120,7 @@ void clearMemory() {
         delete logger;
     if (randomObj)
         delete randomObj;
+    OpenSSLCryptoProvider::destroyProvider();
 }
 
 int main(int argc, char *argv[]) {

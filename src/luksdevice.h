@@ -42,7 +42,7 @@ public:
     int createHeader(const char *cipher, const char *cipher_mode, const char *uuid, Key *key, Luks1Params *params);
 
     //crypt_keyslot_add_by_volume_key
-    int addKeySlotByStorageKey(int keyslot, StorageKey *key, Key *password);
+    int addKeySlotByStorageKey(int keyslot, Key *password);
 
     //crypt_keyslot_add_by_passphrase
     int addKeySlotByPassphrase(int keyslot, Key *passphrase, Key *newPassphrase);
@@ -80,6 +80,9 @@ public:
     int backupHeader(const char *backupFile);
     //crypt_header_restore
     int restoreHeader(const char *backupFile);
+
+    //LUKS_hdr_restore
+    int restoreHeader(const char *backupFile, LuksPartitionHeader* hdr);
 
     size_t getBlockSize();
 

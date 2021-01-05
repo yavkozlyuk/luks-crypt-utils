@@ -18,6 +18,8 @@ Cipher::~Cipher() {
         EVP_CIPHER_CTX_free(this->hd_dec);
         this->hd_dec = NULL;
     }
+
+    OpenSSLCryptoProvider::destroyProvider();
 }
 
 int Cipher::init(const char *name, const char *mode, const unsigned char *key, size_t keyLength) {
@@ -37,7 +39,6 @@ int Cipher::init(const char *name, const char *mode, const unsigned char *key, s
     if (r < 0 || r >= (int) sizeof(cipherName))
         return -EINVAL;
      OpenSSLCryptoProvider::initProvider();
-    //OpenSSL_add_all_ciphers();
     type = EVP_get_cipherbyname(cipherName);
     if (!type) {
         Logger::error("Can not get %s cipher [openssl-evp]", cipherName);
