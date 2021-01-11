@@ -249,7 +249,6 @@ int Utils::initCrypto() {
     struct utsname uts;
     int r;
 
-    r = OpenSSLCryptoProvider::initProvider();
     if (r < 0)
         Logger::error("Cannot initialize crypto backend.");
 

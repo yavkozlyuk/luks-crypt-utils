@@ -17,7 +17,7 @@ struct CipherAlgorithm {
 };
 /* FIXME: Getting block size should be dynamic from cipher backend. */
 static const struct CipherAlgorithm cipher_algs[] = {{"cipher_null", NULL,         16, false},
-                                                     {"kuznyechik",  NULL,         64, false},
+                                                     {"kuznyechik",  NULL,         16, false},
                                                      {"aes",         NULL,         16, false},
                                                      {"serpent",     NULL,         16, false},
                                                      {"twofish",     NULL,         16, false},

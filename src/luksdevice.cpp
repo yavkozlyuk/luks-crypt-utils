@@ -72,7 +72,7 @@ int LuksDevice::load(const char* requested_type, int require_header, int repair)
     if (Utils::isLUKS1(requested_type) || version == 1) {
 
         if (!(this->pbkdf.type) || strcmp(this->pbkdf.type, CRYPT_KDF_PBKDF2)) {
-            this->pbkdf.type = CRYPT_KDF_PBKDF2;
+            this->pbkdf.type = strdup(CRYPT_KDF_PBKDF2);
         }
         r = readHdr(luksHdr, require_header, repair);//LUKS_read_phdr(&hdr, require_header, repair, cd);
 
@@ -874,10 +874,8 @@ int LuksDevice::dump() {
 }
 
 int LuksDevice::dumpWithKey() {
-    StorageKey* sk = new StorageKey();
     Key* password = new Key();
     int r;
-    sk->setKeySize(this->hdr->getKeyBytes());
     r = password->readKey(NULL, opt_keyfile_offset, opt_keyfile_size, opt_key_file, opt_timeout, 0, 0, this->path);
 
     if (r < 0)
@@ -891,47 +889,32 @@ int LuksDevice::dumpWithKey() {
     Logger::keyslotMsg(r, UNLOCKED);
 
     if (opt_master_key_file) {
-        r = sk->writeKey(opt_master_key_file);
+        r = this->storageKey->writeKey(opt_master_key_file);
         if (r < 0)
             goto out;
     }
 
-    std::cout << hdr << std::endl;
+    std::cout << *this->hdr << std::endl;
     if (opt_master_key_file) {
         Logger::info("Key stored to file %s.\n", opt_master_key_file);
         goto out;
     }
     else {
-        std::cout << sk << std::endl;
+        std::cout << *this->storageKey << std::endl;
     }
 
 
 out:
     delete password;
-    delete sk;
     return r;
 }
-//crypt_volume_get_key
+//crypt_volume_key_get
 int LuksDevice::readStorageKey(int keyslot, Key* passphrase) {
-    StorageKey* sk = new StorageKey();
-    int key_len, r = -EINVAL;
-
+    StorageKey* sk = NULL;//new StorageKey();
+    int r = -EINVAL;
 
     if (!passphrase) {
         r = -EINVAL;
-        goto out;
-    }
-
-    key_len = this->hdr->getKeyBytes();
-    sk->setKeySize(key_len);
-    if (key_len < 0) {
-        r = -EINVAL;
-        goto out;
-    }
-
-    if (key_len > (int)sk->getKeySize()) {
-        Logger::error("Volume key buffer too small.");
-        r = -ENOMEM;
         goto out;
     }
 
@@ -944,7 +927,8 @@ int LuksDevice::readStorageKey(int keyslot, Key* passphrase) {
         this->setStorageKey(new StorageKey(*sk));
     }
 out:
-    delete sk;
+    if (sk)
+        delete sk;
     return r;
 }
 int LuksDevice::encryptBlockwise(int inFd, int outFd, LuksStorage* luksStorage, size_t dstLength, unsigned int inSector, unsigned int outSector) {
@@ -1162,7 +1146,6 @@ int LuksDevice::decrypt(unsigned char* dst, size_t dstLength, const char* cipher
     }
 
     close(devfd);
-
     /* Decrypt buffer */
     r = luksStorage->decrypt(0, dstLength /*/ SECTOR_SIZE*/, dst);
 
@@ -1563,7 +1546,6 @@ int LuksDevice::readKeyWithHdr(int keyIndex, Key* password, StorageKey** sk) {
             return r;
     }
     /* Warning, early returns above */
-    delete* sk;
     return -EPERM;
 }
 
@@ -1590,7 +1572,6 @@ int LuksDevice::readKParticularKeyWithHdr(int keyIndex, Key* password, StorageKe
         return -ENOMEM;
     assert(sk->getKeySize() == this->hdr->getKeyBytes());
     AfKey = new Key(AFUtils::splitSectors(sk->getKeySize(), this->hdr->getKeySlot(keyIndex).stripes) * SECTOR_SIZE, NULL);
-
     if (!AfKey || !AfKey->getKey()) {
         r = -ENOMEM;
         goto out;
@@ -1599,14 +1580,14 @@ int LuksDevice::readKParticularKeyWithHdr(int keyIndex, Key* password, StorageKe
     r = OpenSSLCryptoProvider::pbdkf(CRYPT_KDF_PBKDF2, this->hdr->getHashSpec(), password,
                                      this->hdr->getKeySlot(keyIndex).salt, LUKS_SALT_SIZE, derivedKey, this->hdr->getKeySlot(keyIndex).iterations);
 
-    if (r < 0)
+    if (r < 0) {
+        Logger::info("Passphrase does not match key slot %d", keyIndex);
         goto out;
-    Utils::coutHexStr("Hashed password", (const char*)derivedKey->getKey(), derivedKey->getKeySize());
+    }
     Logger::debug("Reading key slot %d area.", keyIndex);
     r = this->decrypt(AfKey->getKey(), AfKey->getKeySize(), derivedKey, this->hdr->getKeySlot(keyIndex).keyMaterialOffset);
     if (r < 0)
         goto out;
-
 
     r = AFUtils::merge((const unsigned char*)AfKey->getKey(), (unsigned char*)sk->getKey(), sk->getKeySize(), this->hdr->getKeySlot(keyIndex).stripes, this->hdr->getHashSpec());
 
@@ -1614,7 +1595,10 @@ int LuksDevice::readKParticularKeyWithHdr(int keyIndex, Key* password, StorageKe
         goto out;
 
     r = OpenSSLCryptoProvider::verifyKey(this->hdr, sk);
-
+    if (r < 0) {
+        Logger::info("Passphrase does not match key slot %d", keyIndex);
+        goto out;
+    }
     /* Allow only empty passphrase with null cipher */
     if (!r && !strcmp(this->hdr->getCipherName(), "cipher_null") && password->getKeySize())
         r = -EPERM;

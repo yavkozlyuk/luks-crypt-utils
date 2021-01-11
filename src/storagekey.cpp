@@ -31,7 +31,19 @@ StorageKey::StorageKey(Key &key) : Key(key) {
 StorageKey::~StorageKey() {
 
 }
-
+std::ostream &operator<<(std::ostream &os, const StorageKey &key) {
+    std::cout << "MK dump:\t";
+    std::ios state(nullptr);
+    state.copyfmt(std::cout);
+    for (int i = 0; i < key.getKeySize(); i++) {
+        if (i && !(i % 16))
+            std::cout << ("\n\t\t");
+        std::cout << std::hex << std::setfill('0') << std::setw(2) << (int) (unsigned char) key.getKey()[i] << " ";
+    }
+    std::cout.copyfmt(state);
+    std::cout << std::endl;
+    return os;
+}
 void StorageKey::setDescription(const char *keyDescription) {
     this->description = (char *) std::malloc(strlen(keyDescription));
     int r;

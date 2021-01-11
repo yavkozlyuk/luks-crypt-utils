@@ -435,13 +435,12 @@ int Key::writeKey(const char *file) {
 
 std::ostream &operator<<(std::ostream &os, const Key &key) {
     std::cout << "MK dump:\t";
-    std::ios state(nullptr);;
-
+    std::ios state(nullptr);
     state.copyfmt(std::cout);
     for (int i = 0; i < key.getKeySize(); i++) {
         if (i && !(i % 16))
             std::cout << ("\n\t\t");
-        std::cout << "0x " << std::hex << std::uppercase << std::setw(8) << std::setfill('0') << (char) key.getKey()[i];
+        std::cout << std::hex << std::setfill('0') << std::setw(2) << (int) (unsigned char) key.getKey()[i] << " ";
     }
     std::cout.copyfmt(state);
     std::cout << std::endl;

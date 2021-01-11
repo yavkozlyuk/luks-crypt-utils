@@ -298,7 +298,7 @@ int setPbkdfParams(LuksDevice *device, const char *devType) {
     if (!strcmp(devType, CRYPT_LUKS1)) {
         if (opt_pbkdf && strcmp(opt_pbkdf, CRYPT_KDF_PBKDF2))
             return -EINVAL;
-        pbkdf.type = (char *) CRYPT_KDF_PBKDF2;
+        pbkdf.type = strdup((char *) CRYPT_KDF_PBKDF2);
         pbkdf.hash = (char *) (opt_hash ?: DEFAULT_LUKS1_HASH);
         pbkdf.timeMs = opt_iteration_time ?: DEFAULT_LUKS1_ITER_TIME;
     } else if (!strcmp(devType, CRYPT_LUKS2)) {

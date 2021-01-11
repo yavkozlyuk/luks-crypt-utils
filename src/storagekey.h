@@ -27,6 +27,8 @@ public:
 
     virtual ~StorageKey();
 
+    friend std::ostream &operator<<(std::ostream &os, const StorageKey &obj);
+
     void setDescription(const char *keyDescription);
 
     void setId(int id);

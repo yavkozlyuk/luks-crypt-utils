@@ -30,11 +30,13 @@ static struct action_type {
         {"UUID",          LuksActions::action_UUID,          1, ("<device>"),                  ("print UUID of LUKS device")},
         {"is_luks",       LuksActions::action_is_luks,       1, "<device>",                    "tests <device> for LUKS partition header"},
         {"decrypt",       LuksActions::action_decrypt,       1, "<device>",                    "decrypt LUKS <device>"},
-        {"read_header",   LuksActions::action_readHeader,   1, "<device>",                    "dump LUKS partition information"},
+        {"read_header",   LuksActions::action_readHeader,    1, "<device>",                    "dump LUKS partition information"},
         {"reencrypt",     LuksActions::action_reencrypt,     1, "<device>",                    "reencrypt <device>"},
         {"encrypt",       LuksActions::action_encrypt,       1, "<device>",                    "encrypt <device>"},
         {"headerBackup",  LuksActions::action_headerBackup,  1, ("<device>"),                  ("Backup LUKS device header and keyslots")},
         {"headerRestore", LuksActions::action_headerRestore, 1, ("<device>"),                  ("Restore LUKS device header and keyslots")},
+        {"listHashAlgorithms", LuksActions::action_listHash, 0, (""),                          ("Print a list of all registered in openssl digest methods")},
+        {"listCipherAlgorithms", LuksActions::action_listCipher, 0, (""),                          ("Print a list of all registered in openssl cipher algorithms")},
         {""}
 };
 
@@ -102,9 +104,9 @@ static int run_action(struct action_type *action) {
     int r;
 
     Logger::info("Running command %s.", action->type);
-
+    OpenSSLCryptoProvider::initProvider();
     r = action->handler();
-
+    OpenSSLCryptoProvider::destroyProvider();
 
     /* Some functions returns keyslot # */
     if (r > 0)
@@ -120,7 +122,6 @@ void clearMemory() {
         delete logger;
     if (randomObj)
         delete randomObj;
-    OpenSSLCryptoProvider::destroyProvider();
 }
 
 int main(int argc, char *argv[]) {
@@ -136,10 +137,10 @@ int main(int argc, char *argv[]) {
             {"version", '\0', POPT_ARG_NONE, &opt_version_mode, 0, ("Print package version"), NULL},
             {"verbose", 'v', POPT_ARG_NONE, &opt_verbose, 0, ("Shows more detailed error messages"), NULL},
             {"debug", '\0', POPT_ARG_NONE, &opt_debug, 0, ("Show debug messages"), NULL},
-            {"cipher", 'c', POPT_ARG_STRING, &opt_cipher, 0, ("The cipher used to encrypt the disk (see /proc/crypto)"),
+            {"cipher", 'c', POPT_ARG_STRING, &opt_cipher, 0, ("The cipher used to encrypt the disk (see luksCryptUtils listCipherAlgorithms)"),
              NULL},
             {"hash", 'h', POPT_ARG_STRING, &opt_hash, 0,
-             ("The hash used to create the encryption key from the passphrase"), NULL},
+             ("The hash used to create the encryption key from the passphrase (see luksCryptUtils listHashAlgorithms)"), NULL},
             {"verify-passphrase", 'y', POPT_ARG_NONE, &opt_verify_passphrase, 0,
              ("Verifies the passphrase by asking for it twice"), NULL},
             {"key-file", 'd', POPT_ARG_STRING, &opt_key_file, 6, ("Read the key from a file"), NULL},
@@ -161,21 +162,15 @@ int main(int argc, char *argv[]) {
              ("secs")},
             {"align-payload", '\0', POPT_ARG_INT, &opt_align_payload, 0,
              ("Align payload at <n> sector boundaries - for luksFormat"), ("SECTORS")},
-            {"header-backup-file", '\0', POPT_ARG_STRING, &opt_header_backup_file, 0,
-             ("File with LUKS header and keyslots backup"), NULL},
+            {"header-backup-file", '\0', POPT_ARG_STRING, &opt_header_backup_file, 0, ("File with LUKS header and keyslots backup"), NULL},
             {"uuid", '\0', POPT_ARG_STRING, &opt_uuid, 0, ("UUID for device to use"), NULL},
-            {"header", '\0', POPT_ARG_STRING, &opt_header_device, 0, ("Device or file with separated LUKS header"),
-             NULL},
-            {"new-header", '\0', POPT_ARG_STRING, &opt_new_header_device, 0,
-             ("Device or file with separated LUKS header"), NULL},
-            {"device", '\0', POPT_ARG_STRING, &opt_device, 0, ("Device or file with separated LUKS header"), NULL},
+            {"header", '\0', POPT_ARG_STRING, &opt_header_device, 0, ("Detached LUKS header"), NULL},
+            {"new-header", '\0', POPT_ARG_STRING, &opt_new_header_device, 0,("Path for creating a new detached header"), NULL},
+            {"device", '\0', POPT_ARG_STRING, &opt_device, 0, ("Target device or container"), NULL},
             {"output-file", '\0', POPT_ARG_STRING, &opt_output_file, 0, ("Output file"), NULL},
-            {"test-passphrase", '\0', POPT_ARG_NONE, &opt_test_passphrase, 0,
-             ("Do not activate device, just check passphrase"), NULL},
-            {"type", 'M', POPT_ARG_STRING, &opt_type, 0, ("Type of device metadata: luks, plain, loopaes, tcrypt"),
-             NULL},
-            {"iter-time", 'i', POPT_ARG_INT, &opt_iteration_time, 0, ("PBKDF iteration time for LUKS (in ms)"),
-             ("msecs")},
+            {"test-passphrase", '\0', POPT_ARG_NONE, &opt_test_passphrase, 0,("Do not activate device, just check passphrase"), NULL},
+            {"type", 'M', POPT_ARG_STRING, &opt_type, 0, ("Type of device metadata: luks, plain, loopaes, tcrypt"), NULL},
+            {"iter-time", 'i', POPT_ARG_INT, &opt_iteration_time, 0, ("PBKDF iteration time for LUKS (in ms)"),("msecs")},
             {"sector-size", '\0', POPT_ARG_INT, &opt_sector_size, 0, ("Encryption sector size (default: 512 bytes)"),
              NULL},
             POPT_TABLEEND

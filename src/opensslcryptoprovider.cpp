@@ -1,10 +1,13 @@
 #include "opensslcryptoprovider.h"
+
 #include <string.h>
 #include <errno.h>
 #include <openssl/evp.h>
 #include <openssl/err.h>
 #include <openssl/hmac.h>
 #include <openssl/rand.h>
+#include <openssl/objects.h>
+
 #include "utils.h"
 #include "logger.h"
 #define T(e) if (!(e)) {\
@@ -38,9 +41,9 @@ int OpenSSLCryptoProvider::initProvider() {
     return 0;
 }
 
-void OpenSSLCryptoProvider::destroyProvider()
-{
+void OpenSSLCryptoProvider::destroyProvider() {
     if (providerInitialized) {
+        Logger::debug("Finishing openssl GOST engine");
         T(ENGINE_finish(eng));
         providerInitialized = 0;
     }
@@ -71,10 +74,7 @@ int OpenSSLCryptoProvider::pbdkf(const char *kdf, const char *hash, Key *passwor
 int OpenSSLCryptoProvider::verifyKey(const LuksPartitionHeader *hdr, Key *vk) {
     Key *testKey = new Key(LUKS_DIGEST_SIZE, NULL);
     int r = 0;
-
-    if (pbdkf(CRYPT_KDF_PBKDF2, hdr->getHashSpec(), vk,
-              hdr->getMkDigestSalt(), LUKS_SALT_SIZE, testKey,
-              hdr->getMkDigestIter()) < 0) {
+    if (pbdkf(CRYPT_KDF_PBKDF2, hdr->getHashSpec(), vk, hdr->getMkDigestSalt(), LUKS_SALT_SIZE, testKey, hdr->getMkDigestIter()) < 0) {
         r = -EINVAL;
         goto out;
     }
@@ -91,4 +91,21 @@ out:
 
 const char *OpenSSLCryptoProvider::getOpenSSLVersion() {
     return SSLeay_version(SSLEAY_VERSION);
+}
+
+void printObj(const OBJ_NAME *obj, void *caption) {
+    printf("%s: %s\n", (const char *)caption, obj->name);
+}
+
+
+int OpenSSLCryptoProvider::listHashAlgorithms() {
+    int r = -1;
+    OBJ_NAME_do_all(OBJ_NAME_TYPE_MD_METH, printObj, (void*)"Digest");
+    return 0;
+}
+
+int OpenSSLCryptoProvider::listCipherAlgorithms() {
+    int r = -1;
+    OBJ_NAME_do_all(OBJ_NAME_TYPE_CIPHER_METH, printObj, (void*)"Cipher");
+    return 0;
 }

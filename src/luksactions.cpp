@@ -2,6 +2,10 @@
 #include "logger.h"
 #include "utils.h"
 #include "pbkdf.h"
+#include "opensslcryptoprovider.h"
+
+#include <iostream>
+#include <fstream>
 
 extern Logger *logger;
 extern const char **action_argv;
@@ -116,7 +120,7 @@ int LuksActions::action_decrypt(void) {
     LuksDevice *device = new LuksDevice();
     StorageKey *sk = new StorageKey();
     Key *password = new Key();
-    char *outFile;
+    char *outFile = NULL;
     int r;
 
     if ((r = device->init(Utils::uuidOrDeviceHeader(NULL))))
@@ -210,7 +214,7 @@ int LuksActions::action_reencrypt(void) {
         reencryptedFile = strdup(opt_output_file);
     } else {
         reencryptedFile = (char *) malloc(1024);
-        sprintf(tmpFile, "%s_reecrypted", (const char *) oldDevice->getPath());
+        sprintf(reencryptedFile, "%s_reecrypted", (const char *) oldDevice->getPath());
         reencryptedFile[1023] = '\0';
     }
     r = oldDevice->decryptBlockwise(tmpFile, oldDevice->getHdr()->getPayloadOffset());
@@ -321,8 +325,15 @@ out:
     delete (key);
     delete (password);
     delete newDevice;
-    if (tmpFile)
+    if (tmpFile) {
+        if (std::ifstream(tmpFile))  {
+            Logger::debug("Removing tmp file %s",  tmpFile);
+             std::remove(tmpFile);
+             bool failed = !std::ifstream("file1.txt");
+                 if(failed) { std::perror("Error opening deleted file"); return 1; }
+        }
         free(tmpFile);
+    }
     if (reencryptedFile)
         free(reencryptedFile);
     return r;
@@ -739,6 +750,14 @@ int LuksActions::action_headerRestore(void) {
 out:
     delete luksDevice;
     return r;
+}
+
+int LuksActions::action_listHash(void) {
+    return OpenSSLCryptoProvider::listHashAlgorithms();
+}
+
+int LuksActions::action_listCipher() {
+    return OpenSSLCryptoProvider::listCipherAlgorithms();
 }
 
 

@@ -89,6 +89,10 @@ public:
     static int action_headerBackup(void);
 
     static int action_headerRestore(void);
+
+    static int action_listHash(void);
+
+    static int action_listCipher(void);
 };
 
 #endif // LUKS_OPTIONS_H

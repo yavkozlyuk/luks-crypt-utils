@@ -22,6 +22,10 @@ public:
     static int verifyKey(const LuksPartitionHeader *hdr, Key *vk);
 
     static const char *getOpenSSLVersion();
+
+    static int listHashAlgorithms();
+
+    static int listCipherAlgorithms();
 };
 
 #endif // OPENSSLCRYPTOPROVIDER_H
