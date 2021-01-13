@@ -42,8 +42,8 @@ int opt_test_passphrase = 0;
 const char *opt_pbkdf = NULL;
 int opt_iteration_time = 0;
 int opt_sector_size = SECTOR_SIZE;
-int opt_verbose = 1;
-int opt_debug = 1;
+int opt_verbose = 0;
+int opt_debug = 0;
 const char *opt_hash = NULL;
 const char *opt_cipher = NULL;
 int opt_verify_passphrase = 1;
@@ -70,7 +70,7 @@ const char *luksType(const char *type) {
 
 LuksActions::LuksActions() = default;
 
-int LuksActions::action_is_luks(void) {
+int LuksActions::action_isLUKS(void) {
     LuksDevice *device = new LuksDevice();
     int r;
     /* FIXME: argc > max should be checked for other operations as well */

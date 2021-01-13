@@ -66,7 +66,7 @@ class LuksActions {
 public:
     LuksActions();
 
-    static int action_is_luks(void);
+    static int action_isLUKS(void);
 
     static int action_decrypt(void);
 
