@@ -558,7 +558,12 @@ static int verifyOrFindEmptyKeySlot(LuksDevice* device, int* keyslot) {
     Logger::debug("Selected keyslot %d.", *keyslot);
     return 0;
 }
+
 int LuksDevice::addKeySlotByStorageKey(int keyslot, Key* password) {
+    return this->addKeySlotByStorageKey(keyslot, password, NULL);
+}
+
+int LuksDevice::addKeySlotByStorageKey(int keyslot, Key* password, StorageKey* storageKey) {
     StorageKey* vk = NULL;
     int r;
 
@@ -670,7 +675,7 @@ int LuksDevice::addKeySlotByKeyFileDeviceOffset(int keyslot, const char *keyfile
     } else {
         password = new Key();
 
-        r = password->readKeyFromFile(keyfile,keyfile_offset, keyfile_size);
+        r = password->readKeyFromFile(keyfile,keyfile_offset, keyfile_size,0);
         if (r < 0)
             goto out;
 
@@ -680,7 +685,7 @@ int LuksDevice::addKeySlotByKeyFileDeviceOffset(int keyslot, const char *keyfile
     if (r < 0)
         goto out;
     newPassword = new Key();
-    r = newPassword->readKeyFromFile(new_keyfile,new_keyfile_offset, new_keyfile_size);
+    r = newPassword->readKeyFromFile(new_keyfile,new_keyfile_offset, new_keyfile_size,0);
     if (r < 0)
         goto out;
 
@@ -1197,7 +1202,7 @@ out:
         close(devfd);
     }
     if (r)
-        Logger::error("IO error while encrypting keyslot.");
+        Logger::error("IO error while writing to %s.", this->getPath());
 
     return r;
 }

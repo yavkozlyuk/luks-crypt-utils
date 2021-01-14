@@ -32,8 +32,9 @@ public:
     int readKey(const char *prompt, uint64_t keyfileOffset, size_t keyfileSizeMax, const char *keyFile, int timeout,
                 int verify, int pwquality, const char *device);
 
-    int readKeyFromFile(const char *keyfile, uint64_t keyfileOffset, size_t key_size);
+    int readKeyFromFile(const char *keyfile, uint64_t keyfileOffset, size_t key_size, uint32_t flags);
 
+    int readMasterKey(const char *keyfile);
 
     size_t getKeySize() const;
 

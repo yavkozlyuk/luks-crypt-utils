@@ -61,7 +61,7 @@ int Key::readKey(const char *file, size_t keysize) {
     }
     close(fd);
     return 0;
-    fail:
+fail:
     Utils::safeFree(key);
     key = NULL;
     return -EINVAL;
@@ -131,7 +131,7 @@ static int interactive_pass(const char *prompt, char *pass, size_t maxlen,
         failed = untimed_read(infd, pass, maxlen);
     tcsetattr(infd, TCSAFLUSH, &orig);
 
-    out_err:
+out_err:
     void *tp2 = malloc(10900);
     free(tp2);
     if (!failed && write(outfd, "\n", 1)) {};
@@ -188,7 +188,7 @@ int Key::readKeyTty(const char *prompt, int timeout, int verify) {
     this->key = (unsigned char *) pass;
     this->keySize = strlen(pass);
     r = 0;
-    out_err:
+out_err:
     Utils::safeFree(pass_verify);
     if (r)
         Utils::safeFree(pass);
@@ -233,16 +233,14 @@ static int keyfileSeek(int fd, uint64_t bytes) {
 }
 
 //crypt_keyfile_device_read
-int Key::readKeyFromFile(const char *keyfile, uint64_t keyfile_offset, size_t key_size) {
+int Key::readKeyFromFile(const char *keyfile, uint64_t keyfile_offset, size_t key_size,
+                         uint32_t flags) {
     int fd, regular_file, char_to_read = 0, char_read = 0, unlimited_read = 0;
     int r = -EINVAL, newline;
-    char *pass = NULL;
+    unsigned char *pass = NULL;
     size_t buflen, i;
     uint64_t file_read_size;
     struct stat st;
-
-    if (!this->key || !this->keySize)
-        return -EINVAL;
 
     this->key = NULL;
     this->keySize = 0;
@@ -292,7 +290,7 @@ int Key::readKeyFromFile(const char *keyfile, uint64_t keyfile_offset, size_t ke
         }
     }
 
-    pass = (char *) Utils::safeAlloc(buflen);
+    pass = (unsigned char *) Utils::safeAlloc(buflen);
     if (!pass) {
         Logger::error("Out of memory while reading passphrase.");
         goto out_err;
@@ -307,7 +305,7 @@ int Key::readKeyFromFile(const char *keyfile, uint64_t keyfile_offset, size_t ke
     for (i = 0, newline = 0; i < key_size; i += char_read) {
         if (i == buflen) {
             buflen += 4096;
-            pass = (char *) Utils::safeRealloc(pass, buflen);
+            pass = (unsigned char *) Utils::safeRealloc(pass, buflen);
             if (!pass) {
                 Logger::error("Out of memory while reading passphrase.");
                 r = -ENOMEM;
@@ -315,7 +313,7 @@ int Key::readKeyFromFile(const char *keyfile, uint64_t keyfile_offset, size_t ke
             }
         }
 
-        if (CRYPT_KEYFILE_STOP_EOL) {
+        if (flags & CRYPT_KEYFILE_STOP_EOL) {
             /* If we should stop on newline, we must read the input
                  * one character at the time. Otherwise we might end up
                  * having read some bytes after the newline, which we
@@ -325,7 +323,7 @@ int Key::readKeyFromFile(const char *keyfile, uint64_t keyfile_offset, size_t ke
         } else {
             /* char_to_read = min(key_size - i, buflen - i) */
             char_to_read = key_size < buflen ?
-                           key_size - i : buflen - i;
+                        key_size - i : buflen - i;
         }
         char_read = IOUtils::readBuffer(fd, &pass[i], char_to_read);
         if (char_read < 0) {
@@ -337,7 +335,7 @@ int Key::readKeyFromFile(const char *keyfile, uint64_t keyfile_offset, size_t ke
         if (char_read == 0)
             break;
         /* Stop on newline only if not requested read from keyfile */
-        if ((CRYPT_KEYFILE_STOP_EOL) && pass[i] == '\n') {
+        if ((flags & CRYPT_KEYFILE_STOP_EOL) && pass[i] == '\n') {
             newline = 1;
             pass[i] = '\0';
             break;
@@ -365,7 +363,7 @@ int Key::readKeyFromFile(const char *keyfile, uint64_t keyfile_offset, size_t ke
     this->key = (unsigned char *) pass;
     this->keySize = i;
     r = 0;
-    out_err:
+out_err:
     if (fd != STDIN_FILENO)
         close(fd);
 
@@ -374,9 +372,31 @@ int Key::readKeyFromFile(const char *keyfile, uint64_t keyfile_offset, size_t ke
     return r;
 }
 
-int
-Key::readKey(const char *prompt, uint64_t keyfile_offset, size_t keyfile_size_max, const char *key_file, int timeout,
-             int verify, int pwquality, const char *devicePath) {
+int Key::readMasterKey(const char *keyfile)
+{
+    int fd;
+    this->key = (unsigned char *)Utils::safeAlloc(this->keySize);
+
+    fd = open(keyfile, O_RDONLY);
+    if (fd == -1) {
+        Logger::error("Cannot read keyfile %s.", keyfile);
+        goto fail;
+    }
+    if ((read(fd, this->key, this->keySize) != this->keySize)) {
+        Logger::error("Cannot read %d bytes from keyfile %s.", this->keySize, keyfile);
+        close(fd);
+        goto fail;
+    }
+    close(fd);
+    return 0;
+fail:
+    Utils::safeFree(this->key);
+    this->key = NULL;
+    return -EINVAL;
+}
+
+int Key::readKey(const char *prompt, uint64_t keyfile_offset, size_t keyfile_size_max, const char *key_file, int timeout,
+                 int verify, int pwquality, const char *devicePath) {
     char tmp[1024];
     int r = -EINVAL, block;
     if (Utils::isStdin(key_file)) {
@@ -392,7 +412,7 @@ Key::readKey(const char *prompt, uint64_t keyfile_offset, size_t keyfile_size_ma
 
     } else {
         Logger::debug("File descriptor passphrase entry requested.");
-        r = readKeyFromFile(key_file, keyfile_offset, keyfile_size_max);
+        r = readKeyFromFile(key_file, keyfile_offset, keyfile_size_max, 0);
     }
 
     return r;

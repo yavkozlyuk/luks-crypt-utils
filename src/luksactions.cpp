@@ -72,7 +72,7 @@ LuksActions::LuksActions() = default;
 
 int LuksActions::action_isLUKS(void) {
     LuksDevice *device = new LuksDevice();
-    int r;
+    int r = 0;
     /* FIXME: argc > max should be checked for other operations as well */
     if (action_argc > 1) {
         Logger::info("Only one device argument for isLuks operation is supported.");
@@ -86,6 +86,8 @@ int LuksActions::action_isLUKS(void) {
 
     r = device->load(luksType(CRYPT_LUKS1));
 out:
+    if (r == 0)
+        Logger::info("Device %s is valid LUKS1 device.", device->getPath());
     delete device;
     return r;
 };
@@ -296,7 +298,7 @@ int LuksActions::action_reencrypt(void) {
 
     if (opt_master_key_file) {
         key = new Key(keysize, NULL);
-        r = key->readKeyFromFile(opt_master_key_file, 0, keysize);
+        r = key->readMasterKey(opt_master_key_file);
         if (r < 0)
             goto out;
     } else {
@@ -328,9 +330,9 @@ out:
     if (tmpFile) {
         if (std::ifstream(tmpFile))  {
             Logger::debug("Removing tmp file %s",  tmpFile);
-             std::remove(tmpFile);
-             bool failed = !std::ifstream(tmpFile);
-             if(!failed) { std::perror("Error deleting tmp file"); return 1; }
+            std::remove(tmpFile);
+            bool failed = !std::ifstream(tmpFile);
+            if(!failed) { std::perror("Error deleting tmp file"); return 1; }
         }
         free(tmpFile);
     }
@@ -413,11 +415,11 @@ int LuksActions::action_encrypt(void) {
     }
     if ((r = device->init(outFile))) {
         if (opt_header_device)
-            Logger::error("Cannot use %s as on-disk header.", devicePath);
+            Logger::error("Cannot use %s as on-disk header.", outFile);
         goto out;
     }
     if (!created) {
-        r = asprintf(&msg, "This will overwrite data on %s irrevocably.", devicePath);
+        r = asprintf(&msg, "This will overwrite data on %s irrevocably.", outFile);
         if (r == -1) {
             r = -ENOMEM;
             goto out;
@@ -439,7 +441,7 @@ int LuksActions::action_encrypt(void) {
 
     if (opt_master_key_file) {
         key = new Key(keysize, NULL);
-        r = key->readKeyFromFile(opt_master_key_file, 0, keysize);
+        r = key->readMasterKey(opt_master_key_file);
         if (r < 0)
             goto out;
     } else {
@@ -477,8 +479,8 @@ int LuksActions::action_addKey() {
     Key *password = NULL, *newPassword = NULL;
     LuksDevice *luksDevice = new LuksDevice();
 
-    if (!opt_device && !opt_header_device) {
-        Logger::error("Input device/header must be given");
+    if (!opt_device) {
+        Logger::error("Input device must be given");
         return -EINVAL;
     }
 
@@ -499,10 +501,9 @@ int LuksActions::action_addKey() {
 
     if (opt_master_key_file) {
         key = new StorageKey(keysize, NULL);
-        r = key->readKeyFromFile(opt_master_key_file, 0, keysize);
+        r = key->readMasterKey(opt_master_key_file);
         if (r < 0)
             goto out;
-
         r = luksDevice->getHdr()->verifyVolumeKey(key);
         Utils::checkSignal(&r);
         if (r < 0)
@@ -513,7 +514,7 @@ int LuksActions::action_addKey() {
         if (r < 0)
             goto out;
 
-        r = luksDevice->addKeySlotByStorageKey(opt_key_slot, newPassword);
+        r = luksDevice->addKeySlotByStorageKey(opt_key_slot, newPassword, key);
     } else if (opt_key_file && !Utils::isStdin(opt_key_file) &&
                opt_new_key_file && !Utils::isStdin(opt_new_key_file)) {
         r = luksDevice->addKeySlotByKeyFileDeviceOffset(opt_key_slot, opt_key_file, opt_keyfile_size,
@@ -547,7 +548,8 @@ int LuksActions::action_addKey() {
         r = luksDevice->addKeySlotByPassphrase(opt_key_slot, password, newPassword);
     }
 out:
-    Logger::keyslotMsg(r, CREATED);
+    if (!r)
+        Logger::keyslotMsg(r, CREATED);
     if (password) delete password;
     if (newPassword) delete newPassword;
     if (key) delete key;
@@ -569,7 +571,7 @@ int LuksActions::action_removeKey() {
         goto out;
     }
     password = new Key();
-    r = password->readKey("Enter new passphrase to be deleted: ", opt_keyfile_offset, opt_keyfile_size, opt_key_file,
+    r = password->readKey("Enter passphrase to be deleted: ", opt_keyfile_offset, opt_keyfile_size, opt_key_file,
                           opt_timeout, 0, 0, luksDevice->getPath());
     if (r < 0)
         goto out;
@@ -589,9 +591,9 @@ int LuksActions::action_removeKey() {
 
     if (luksDevice->getHdr()->getKeySlotInfo(opt_key_slot) == SLOT_ACTIVE_LAST &&
             !Utils::confirmDialog("This is the last keyslot. \nDevice will become unusable after purging this key.", "Operation aborted, the keyslot was NOT wiped.\n")) {
-          r = -EPERM;
-          goto out;
-        }
+        r = -EPERM;
+        goto out;
+    }
 
     r = luksDevice->destroyKeySlot(opt_key_slot);
     Logger::keyslotMsg(opt_key_slot, REMOVED);

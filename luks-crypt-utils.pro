@@ -48,7 +48,8 @@ HEADERS += \
 DISTFILES += \
     .gitignore \
     Makefile \
-    README.md
+    README.md \
+    test/createCryptsetupContainer.sh
 
 target.path = /usr/local/bin/
 INSTALLS += target

@@ -43,6 +43,9 @@ public:
 
     //crypt_keyslot_add_by_volume_key
     int addKeySlotByStorageKey(int keyslot, Key *password);
+    //crypt_keyslot_add_by_volume_key
+    int addKeySlotByStorageKey(int keyslot, Key *password, StorageKey* storageKey);
+
 
     //crypt_keyslot_add_by_passphrase
     int addKeySlotByPassphrase(int keyslot, Key *passphrase, Key *newPassphrase);
