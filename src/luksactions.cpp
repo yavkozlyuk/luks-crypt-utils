@@ -335,7 +335,7 @@ out:
         free(tmpFile);
     }
     if (!r)
-        Logger::info("Device %s was successfully reencrypted. Outfile: %s", oldDevice->getPath(), reencryptedFile);
+        Logger::info("Device %s was successfully reencrypted. Outfile: %s", opt_device, reencryptedFile);
     if (reencryptedFile)
         free(reencryptedFile);
     return r;
