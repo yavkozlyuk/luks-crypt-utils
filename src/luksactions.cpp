@@ -220,7 +220,7 @@ int LuksActions::action_reencrypt(void) {
     r = oldDevice->decryptBlockwise(tmpFile, oldDevice->getHdr()->getPayloadOffset());
 
     if (r == 0)
-        Logger::info("Device %s was successfully decrypted. Outfile: %s", oldDevice->getPath(), tmpFile);
+        Logger::info("Device %s was successfully decrypted. Outfile: %s", opt_device, tmpFile);
 
 
 
