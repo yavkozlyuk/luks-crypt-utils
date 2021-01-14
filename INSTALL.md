@@ -6,6 +6,7 @@
 * libpopt-dev
 * uuid-dev
 * openssl v1.1.1f
+* g++
 * openssl GOST engine (https://github.com/gost-engine/engine/tree/openssl_1_1_1)
 
 #####OpenSSL GOST engine installation.
@@ -19,7 +20,7 @@ __Note:__ Do not forget to change  DynamicPath parameter in openssl.cnf to `ENGI
 
 #####luks-crypt-utils installation
 
-1. run sudo apt-get --yes  install qt5-qmake cmake libpopt-dev libssl-dev uuid-dev
+1. run sudo apt-get --yes  install g++ qt5-qmake cmake libpopt-dev libssl-dev uuid-dev
 2. check openssl version
 3. install openssl GOST engine
 4. git repo or download zip to get luks-crypt-utils sources
