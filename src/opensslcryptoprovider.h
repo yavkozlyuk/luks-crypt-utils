@@ -23,9 +23,9 @@ public:
 
     static const char *getOpenSSLVersion();
 
-    static int listHashAlgorithms();
+    static void listHashAlgorithms();
 
-    static int listCipherAlgorithms();
+    static void listCipherAlgorithms();
 };
 
 #endif // OPENSSLCRYPTOPROVIDER_H

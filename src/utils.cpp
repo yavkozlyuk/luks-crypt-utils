@@ -247,10 +247,7 @@ int Utils::parseCipherNameAndMode(const char *s, char *cipher, int *keyNums, cha
 
 int Utils::initCrypto() {
     struct utsname uts;
-    int r;
-
-    if (r < 0)
-        Logger::error("Cannot initialize crypto backend.");
+    int r = 0;
 
     if (!r) {
         const char *version = OpenSSLCryptoProvider::getOpenSSLVersion();

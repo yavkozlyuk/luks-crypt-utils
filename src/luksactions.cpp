@@ -214,7 +214,7 @@ int LuksActions::action_reencrypt(void) {
         reencryptedFile = strdup(opt_output_file);
     } else {
         reencryptedFile = (char *) malloc(1024);
-        sprintf(reencryptedFile, "%s_reecrypted", (const char *) oldDevice->getPath());
+        sprintf(reencryptedFile, "%s_reencrypted", (const char *) oldDevice->getPath());
         reencryptedFile[1023] = '\0';
     }
     r = oldDevice->decryptBlockwise(tmpFile, oldDevice->getHdr()->getPayloadOffset());
@@ -598,7 +598,6 @@ out:
 }
 
 int LuksActions::action_changeKey() {
-    const char *new_key_file = (action_argc > 1 ? action_argv[1] : NULL);
     LuksDevice *luksDevice = new LuksDevice();
     StorageKey *testKey = NULL;
     Key *password = NULL, *newPassword = NULL;
@@ -712,7 +711,7 @@ out:
 
 int LuksActions::action_headerBackup(void) {
     LuksDevice *luksDevice = new LuksDevice();
-    int r;
+    int r = 0;
 
     if (!opt_header_backup_file) {
         Logger::error("Option --header-backup-file is required.");
@@ -753,11 +752,13 @@ out:
 }
 
 int LuksActions::action_listHash(void) {
-    return OpenSSLCryptoProvider::listHashAlgorithms();
+    OpenSSLCryptoProvider::listHashAlgorithms();
+    return 0;
 }
 
 int LuksActions::action_listCipher() {
-    return OpenSSLCryptoProvider::listCipherAlgorithms();
+    OpenSSLCryptoProvider::listCipherAlgorithms();
+    return 0;
 }
 
 

@@ -16,7 +16,6 @@
     }
 static int providerInitialized = 0;
 
-static ENGINE *eng = NULL;
 OpenSSLCryptoProvider::OpenSSLCryptoProvider() {
 
 }
@@ -32,6 +31,7 @@ int OpenSSLCryptoProvider::initProvider() {
     OPENSSL_add_all_algorithms_conf();
     ERR_load_crypto_strings();
     Logger::debug("Initializing openssl GOST engine");
+    ENGINE *eng = NULL;
     T(eng = ENGINE_by_id("gost"));
     T(ENGINE_init(eng));
     T(ENGINE_set_default(eng, ENGINE_METHOD_ALL));
@@ -43,9 +43,18 @@ int OpenSSLCryptoProvider::initProvider() {
 
 void OpenSSLCryptoProvider::destroyProvider() {
     if (providerInitialized) {
-        Logger::debug("Finishing openssl GOST engine");
-        T(ENGINE_finish(eng));
+        Logger::debug("Finishing openssl threads");
+        ENGINE *eng = NULL;
+        T(eng = ENGINE_by_id("gost"));
+        if (eng != NULL) {
+            Logger::debug("Finishing openssl gost-engine");
+            T(ENGINE_finish(eng));
+            T(ENGINE_free(eng));
+        }
+        OPENSSL_thread_stop();
+        OPENSSL_cleanup();
         providerInitialized = 0;
+
     }
 }
 
@@ -98,14 +107,10 @@ void printObj(const OBJ_NAME *obj, void *caption) {
 }
 
 
-int OpenSSLCryptoProvider::listHashAlgorithms() {
-    int r = -1;
+void OpenSSLCryptoProvider::listHashAlgorithms() {
     OBJ_NAME_do_all(OBJ_NAME_TYPE_MD_METH, printObj, (void*)"Digest");
-    return 0;
 }
 
-int OpenSSLCryptoProvider::listCipherAlgorithms() {
-    int r = -1;
+void OpenSSLCryptoProvider::listCipherAlgorithms() {
     OBJ_NAME_do_all(OBJ_NAME_TYPE_CIPHER_METH, printObj, (void*)"Cipher");
-    return 0;
 }

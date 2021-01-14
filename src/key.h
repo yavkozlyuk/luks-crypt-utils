@@ -46,8 +46,8 @@ public:
     int writeKey(const char *file);
 
 protected:
-    unsigned char *key;
-    size_t keySize;
+    unsigned char *key = NULL;
+    size_t keySize  = 0;
 
     int readKeyTty(const char *prompt, int timeout, int verify);
 };

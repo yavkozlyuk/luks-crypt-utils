@@ -20,10 +20,10 @@ luks-crypt-utils works only with existing containters (no matter, if they are de
 ./luks-crypt-utils decrypt --header=<path>
 - reencrypt
 ./luks-crypt-utils reencrypt --device=<device to reencrypt> --output-file=<output device path>
-- read_header
-./luks-crypt-utils read_header --header=<path> --dump-master-key
-- is_luks
-./luks-crypt-utils is_luks --header=<path>
+- readHeader
+./luks-crypt-utils readHeader --header=<path> --dump-master-key
+- isLUKS
+./luks-crypt-utils isLUKS --header=<path>
 - addKey
 ./luks-crypt-utils addKey --device=<path>
 - removeKey

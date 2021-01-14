@@ -40,7 +40,7 @@ DISTNAME      = luks-crypt-utils1.0.0
 DISTDIR = /home/owl/qtProjects/luks-crypt-utils/.tmp/luks-crypt-utils1.0.0
 LINK          = g++
 LFLAGS        = -Wl,-O1
-LIBS          = $(SUBLIBS) -lcrypto -lssl -lm -lexplain -lpopt -luuid   
+LIBS          = $(SUBLIBS) -lcrypto -lssl -lm -lpopt -luuid   
 AR            = ar cqs
 RANLIB        = 
 SED           = sed
@@ -84,7 +84,8 @@ OBJECTS       = afutils.o \
 		random.o \
 		storagekey.o \
 		utils.o
-DIST          = Makefile \
+DIST          = .gitignore \
+		Makefile \
 		README.md \
 		/usr/lib/x86_64-linux-gnu/qt5/mkspecs/features/spec_pre.prf \
 		/usr/lib/x86_64-linux-gnu/qt5/mkspecs/common/unix.conf \
@@ -322,7 +323,8 @@ luks-crypt-utils.o: src/luks-crypt-utils.cpp src/luks-crypt-utils.h \
 		src/logger.h \
 		src/random.h \
 		src/utils.h \
-		src/afutils.h
+		src/afutils.h \
+		src/opensslcryptoprovider.h
 	$(CXX) -c $(CXXFLAGS) $(INCPATH) -o luks-crypt-utils.o src/luks-crypt-utils.cpp
 
 luksactions.o: src/luksactions.cpp src/luksactions.h \
@@ -339,7 +341,8 @@ luksactions.o: src/luksactions.cpp src/luksactions.h \
 		src/logger.h \
 		src/utils.h \
 		src/afutils.h \
-		src/pbkdf.h
+		src/pbkdf.h \
+		src/opensslcryptoprovider.h
 	$(CXX) -c $(CXXFLAGS) $(INCPATH) -o luksactions.o src/luksactions.cpp
 
 luksdevice.o: src/luksdevice.cpp src/luksdevice.h \
@@ -434,9 +437,19 @@ utils.o: src/utils.cpp src/utils.h \
 
 ####### Install
 
-install:  FORCE
+install_target: first FORCE
+	@test -d $(INSTALL_ROOT)/usr/local/bin/ || mkdir -p $(INSTALL_ROOT)/usr/local/bin/
+	-$(QINSTALL_PROGRAM) $(QMAKE_TARGET) $(INSTALL_ROOT)/usr/local/bin/$(QMAKE_TARGET)
+	-$(STRIP) $(INSTALL_ROOT)/usr/local/bin/$(QMAKE_TARGET)
 
-uninstall:  FORCE
+uninstall_target: FORCE
+	-$(DEL_FILE) $(INSTALL_ROOT)/usr/local/bin/$(QMAKE_TARGET)
+	-$(DEL_DIR) $(INSTALL_ROOT)/usr/local/bin/ 
+
+
+install: install_target  FORCE
+
+uninstall: uninstall_target  FORCE
 
 FORCE:
 
