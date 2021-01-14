@@ -1,38 +1,56 @@
 # luks-crypt-utils
 The grad project for MIEM HSE. (Research on dm-crypt + cryptsetup + luks)
 
-# Requirements:
 
-openssl v1.1.1
-libssl-dev
-uuid-dev libdevmapper-dev libopt-dev libgcrypt20-dev
-blkid-dev
-
-openssl GOST engine - https://github.com/gost-engine/engine/tree/openssl_1_1_1
-
-
-# Usage
+## Usage examples
 luks-crypt-utils works only with existing containters (no matter, if they are devices/files/folder/filesystems)
 
 - encrypt:
-./luks-crypt-utils encrypt --header=<path>
+```
+luks-crypt-utils encrypt --header=<path>
+```
 - decrypt
-./luks-crypt-utils decrypt --header=<path>
+```
+luks-crypt-utils decrypt --header=<path>
+```
 - reencrypt
-./luks-crypt-utils reencrypt --device=<device to reencrypt> --output-file=<output device path>
+```
+luks-crypt-utils reencrypt --device=<device to reencrypt> --output-file=<output device path>
+```
 - readHeader
-./luks-crypt-utils readHeader --header=<path> --dump-master-key
+```
+luks-crypt-utils readHeader --header=<path> --dump-master-key
+```
 - isLUKS
-./luks-crypt-utils isLUKS --header=<path>
+```
+luks-crypt-utils isLUKS --header=<path>
+```
 - addKey
-./luks-crypt-utils addKey --device=<path>
+```
+luks-crypt-utils addKey --device=<path>
+```
 - removeKey
+```
+luks-crypt-utils removeKey --device=<path>
+```
 - changeKey
+```
+luks-crypt-utils changeKey --device=<path>
+```
 - killSlot
-./luks-crypt-utils killSlot --key-slot=<slot to kill> --device=<path>
+```
+luks-crypt-utils killSlot --key-slot=<slot to kill> --device=<path>
+```
 - UUID
+```
+luks-crypt-utils UUID --device=<path>
+```
 - headerBackup
-/luks-crypt-utils headerBackup --device=<path> --header-backup-file=<path to header backup>
+```
+luks-crypt-utils headerBackup --device=<path> --header-backup-file=<path to header backup>
+```
 - headerRestore
-/luks-crypt-utils headerRestore --device=<path> --header-backup-file=<path to header backup>
+```
+luks-crypt-utils headerRestore --device=<path> --header-backup-file=<path to header backup>
+```
 
