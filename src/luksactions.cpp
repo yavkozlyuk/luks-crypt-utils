@@ -329,11 +329,13 @@ out:
         if (std::ifstream(tmpFile))  {
             Logger::debug("Removing tmp file %s",  tmpFile);
              std::remove(tmpFile);
-             bool failed = !std::ifstream("file1.txt");
-                 if(failed) { std::perror("Error opening deleted file"); return 1; }
+             bool failed = !std::ifstream(tmpFile);
+             if(!failed) { std::perror("Error deleting tmp file"); return 1; }
         }
         free(tmpFile);
     }
+    if (!r)
+        Logger::info("Device %s was successfully reencrypted. Outfile: %s", oldDevice->getPath(), reencryptedFile);
     if (reencryptedFile)
         free(reencryptedFile);
     return r;
@@ -461,6 +463,8 @@ int LuksActions::action_encrypt(void) {
     Logger::keyslotMsg(r, CREATED);
     device->encryptBlockwise(devicePath, device->getHdr()->getPayloadOffset());
 out:
+    if (r == 0)
+        Logger::info("Device %s was successfully encrypted. Outfile: %s", opt_device, device->getPath());
     delete (key);
     delete (password);
     delete device;
