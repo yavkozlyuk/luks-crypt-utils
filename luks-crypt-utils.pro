@@ -51,7 +51,7 @@ DISTFILES += \
     README.md \
     test/createCryptsetupContainer.sh \
     test/decryptTests.sh \
-    test/encryptTests.sh \
+    test/encryptDecryptTests.sh \
     test/openDecrypted.sh \
     test/runTests.sh
 
