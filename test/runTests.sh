@@ -1,6 +1,5 @@
 #!/bin/bash
 chmod +x ./*.sh;
 sudo ./createCryptsetupContainer.sh;
-./encryptTests.sh
-./decryptTests.sh
+./encryptDecryptTests.sh
 sudo ./openDecrypted.sh;
