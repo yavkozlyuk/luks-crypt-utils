@@ -118,11 +118,8 @@ private:
     int encryptBlockwise(int in, int out, LuksStorage *luksStorage, size_t dstLength, unsigned int inSector,
                          unsigned int outSector);
 
-    char *type;
-    char *path;
-
-    unsigned int oDirect: 1;
-    unsigned int initDone: 1;
+    char *type = NULL;
+    char *path = NULL;
 
     /* cached values */
     size_t alignment;

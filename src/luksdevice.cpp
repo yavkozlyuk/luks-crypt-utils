@@ -379,6 +379,7 @@ ssize_t LuksDevice::getFileSize(const char* path) {
         close(devfd);
         return rc == 0 ? stat_buf.st_size : -1;
     }
+    Logger::error("Error getting file %s size", path);
     return -EPERM;
 }
 static int checkDeviceSize(LuksDevice* device, int falloc) {
@@ -1126,8 +1127,7 @@ int LuksDevice::decrypt(unsigned char* dst, size_t dstLength, const char* cipher
     r = luksStorage->init(SECTOR_SIZE, cipher, cipherMode, vk);
 
     if (r) {
-        Logger::error("Userspace crypto wrapper cannot use %s-%s (%d).",
-                      this->hdr->getCipherName(), this->hdr->getCipherMode(), r);
+        Logger::error("Userspace crypto wrapper cannot use %s-%s (%d).", cipher, cipherMode, r);
         goto out;
     }
 

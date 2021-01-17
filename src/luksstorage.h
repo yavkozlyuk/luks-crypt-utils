@@ -26,7 +26,7 @@ public:
 private:
     size_t sectorSize;
     unsigned ivShift;
-    Cipher *cipher;
+    Cipher *cipher = NULL;
     SectorIV cipherIV;
 };
 

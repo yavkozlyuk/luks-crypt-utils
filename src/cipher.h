@@ -66,15 +66,15 @@ public:
     static void sectorIVDestroy(struct SectorIV *);
 
 private:
-    EVP_CIPHER_CTX *hd_enc;
-    EVP_CIPHER_CTX *hd_dec;
+    EVP_CIPHER_CTX *hd_enc = NULL;
+    EVP_CIPHER_CTX *hd_dec = NULL;
     size_t ivLength;
 };
 
 struct SectorIV {
     SectorIVType type;
-    int ivSize;
-    unsigned char *iv;
+    int ivSize = 0;
+    unsigned char *iv = NULL;
     std::shared_ptr<Cipher> cipher;
     int shift;
 };

@@ -49,7 +49,11 @@ DISTFILES += \
     .gitignore \
     Makefile \
     README.md \
-    test/createCryptsetupContainer.sh
+    test/createCryptsetupContainer.sh \
+    test/decryptTests.sh \
+    test/encryptTests.sh \
+    test/openDecrypted.sh \
+    test/runTests.sh
 
 target.path = /usr/local/bin/
 INSTALLS += target

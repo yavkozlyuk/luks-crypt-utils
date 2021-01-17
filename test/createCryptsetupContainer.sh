@@ -18,4 +18,6 @@ cryptsetup luksClose cryptsetupDevice;
 echo "Dumping cryptsetupContainer metadata with cryptsetup";
 cryptsetup luksDump cryptsetupContainer;
 echo "Dumping cryptsetupContainer master-key to \"gost-mk\" file";
+rm -f gost-mk;
 cryptsetup luksDump cryptsetupContainer --dump-master-key --key-file=keyfile1 --master-key-file=gost-mk;
+chmod 744 gost-mk;

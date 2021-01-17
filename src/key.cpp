@@ -395,8 +395,7 @@ fail:
     return -EINVAL;
 }
 
-int Key::readKey(const char *prompt, uint64_t keyfile_offset, size_t keyfile_size_max, const char *key_file, int timeout,
-                 int verify, int pwquality, const char *devicePath) {
+int Key::readKey(const char *prompt, uint64_t keyfile_offset, size_t keyfile_size_max, const char *key_file, int timeout, int verify, int pwquality, const char *devicePath) {
     char tmp[1024];
     int r = -EINVAL, block;
     if (Utils::isStdin(key_file)) {

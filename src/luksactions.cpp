@@ -4,6 +4,7 @@
 #include "pbkdf.h"
 #include "opensslcryptoprovider.h"
 
+
 #include <iostream>
 #include <fstream>
 
@@ -70,6 +71,16 @@ const char *luksType(const char *type) {
 
 LuksActions::LuksActions() = default;
 
+bool fileExists(const char* path) {
+    std::ifstream f(path);
+    if (f.good()) {
+        f.close();
+        return true;
+    }
+    return false;
+}
+
+
 int LuksActions::action_isLUKS(void) {
     LuksDevice *device = new LuksDevice();
     int r = 0;
@@ -120,7 +131,7 @@ out:
 
 int LuksActions::action_decrypt(void) {
     LuksDevice *device = new LuksDevice();
-    StorageKey *sk = new StorageKey();
+    StorageKey *sk = NULL;
     Key *password = new Key();
     char *outFile = NULL;
     int r;
@@ -133,22 +144,39 @@ int LuksActions::action_decrypt(void) {
         goto out;
     }
 
-    sk->setKeySize(device->getHdr()->getKeyBytes());
+    //sk->setKeySize(device->getHdr()->getKeyBytes());
 
-    r = password->readKey(NULL, opt_keyfile_offset, opt_keyfile_size, opt_key_file, opt_timeout, 0, 0,
-                          device->getPath());
+    if (opt_master_key_file) {
+        sk = new StorageKey(device->getHdr()->getKeyBytes(), NULL);
+        r = sk->readMasterKey(opt_master_key_file);
+        if (r < 0)
+            goto out;
+        r = device->getHdr()->verifyVolumeKey(sk);
+        Utils::checkSignal(&r);
+        if (r < 0) {
+            Logger::error("Volume key does not match the volume.");
+            goto out;
+        }
+        device->setStorageKey(sk);
+        sk = NULL;
+    } else {
 
-    if (r < 0)
-        goto out;
+        r = password->readKey(NULL, opt_keyfile_offset, opt_keyfile_size, opt_key_file, opt_timeout, 0, 0,
+                              device->getPath());
+
+        if (r < 0)
+            goto out;
 
 
-    r = device->readStorageKey(CRYPT_ANY_SLOT, password);
 
-    Logger::passphraseMsg(r);
-    Utils::checkSignal(&r);
-    if (r < 0)
-        goto out;
-    Logger::keyslotMsg(r, UNLOCKED);
+        r = device->readStorageKey(CRYPT_ANY_SLOT, password);
+
+        Logger::passphraseMsg(r);
+        Utils::checkSignal(&r);
+        if (r < 0)
+            goto out;
+        Logger::keyslotMsg(r, UNLOCKED);
+    }
     if (opt_output_file) {
         outFile = strdup(opt_output_file);
     } else {
@@ -161,7 +189,8 @@ out:
     if (r == 0)
         Logger::info("Device %s was successfully decrypted. Outfile: %s", device->getPath(), outFile);
     delete device;
-    delete sk;
+    if (sk)
+        delete sk;
     delete password;
     if (outFile)
         free(outFile);
@@ -179,11 +208,19 @@ int LuksActions::action_reencrypt(void) {
     char cipher[MAX_CIPHER_LEN], cipher_mode[MAX_CIPHER_LEN];
     Key *key = NULL;
     LuksDevice *newDevice = NULL;
-    void *params;
+    void *params = NULL;
+    if (!opt_device) {
+        Logger::error("Input device must be given");
+        return -EINVAL;
+    }
+    if (!fileExists(opt_device)) {
+        Logger::error("File %s does not exists", opt_device);
+        return -EINVAL;
+    }
     struct Luks1Params params1 = {
         .hash = opt_hash ?: DEFAULT_LUKS1_HASH,
                 .dataAlignment = (size_t) opt_align_payload,
-                .dataDevice = opt_header_device ? action_argv[0] : NULL,
+                .dataDevice = opt_device ? opt_device : NULL,
     };
     if ((r = oldDevice->init(Utils::uuidOrDeviceHeader(NULL))))
         goto out;
@@ -291,7 +328,7 @@ int LuksActions::action_reencrypt(void) {
     keysize = (opt_key_size ?: DEFAULT_LUKS1_KEYBITS) / 8;
 
     password = new Key();
-    r = password->readKey(NULL, opt_keyfile_offset, opt_keyfile_size, opt_key_file, opt_timeout, 0, 0,
+    r = password->readKey(NULL, opt_new_keyfile_offset, opt_new_keyfile_size, opt_new_key_file, opt_timeout, 0, 0,
                           newDevice->getPath());
     if (r < 0)
         goto out;
@@ -350,10 +387,13 @@ int LuksActions::action_encrypt(void) {
     char *outFile, *msg = NULL;
     char cipher[MAX_CIPHER_LEN], cipher_mode[MAX_CIPHER_LEN];
     Key *key = NULL, *password = NULL;
-    /* Create header file (must contain at least one sector)? */
 
     if (!opt_device) {
         Logger::error("Input device must be given");
+        return -EINVAL;
+    }
+    if (!fileExists(opt_device)) {
+        Logger::error("File %s does not exists", opt_device);
         return -EINVAL;
     }
 
@@ -388,7 +428,7 @@ int LuksActions::action_encrypt(void) {
     struct Luks1Params params1 = {
         .hash = opt_hash ?: DEFAULT_LUKS1_HASH,
                 .dataAlignment = (size_t) opt_align_payload,
-                .dataDevice = opt_header_device ? action_argv[0] : NULL,
+                .dataDevice = opt_device ? opt_device : NULL,
     };
     type = luksType(opt_type);
     if (!type)
@@ -406,7 +446,7 @@ int LuksActions::action_encrypt(void) {
         r = -EINVAL;
         goto out;
     }
-    devicePath = opt_device ?: action_argv[0];
+    devicePath = opt_device;
 
     r = Utils::parseCipherNameAndMode(opt_cipher ?: DEFAULT_CIPHER(LUKS1), cipher, NULL, cipher_mode);
     if (r < 0) {
@@ -481,6 +521,10 @@ int LuksActions::action_addKey() {
 
     if (!opt_device) {
         Logger::error("Input device must be given");
+        return -EINVAL;
+    }
+    if (!fileExists(opt_device)) {
+        Logger::error("File %s does not exists", opt_device);
         return -EINVAL;
     }
 

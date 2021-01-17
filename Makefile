@@ -88,6 +88,10 @@ DIST          = .gitignore \
 		Makefile \
 		README.md \
 		test/createCryptsetupContainer.sh \
+		test/decryptTests.sh \
+		test/encryptTests.sh \
+		test/openDecrypted.sh \
+		test/runTests.sh \
 		/usr/lib/x86_64-linux-gnu/qt5/mkspecs/features/spec_pre.prf \
 		/usr/lib/x86_64-linux-gnu/qt5/mkspecs/common/unix.conf \
 		/usr/lib/x86_64-linux-gnu/qt5/mkspecs/common/linux.conf \

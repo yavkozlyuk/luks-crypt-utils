@@ -42,9 +42,10 @@ int Cipher::init(const char *name, const char *mode, const unsigned char *key, s
         return -ENOENT;
     }
 
-
-    if (EVP_CIPHER_key_length(type) != (int) keyLength)
+    if (EVP_CIPHER_key_length(type) != (int) keyLength) {
+        Logger::error("Key size %d is not supported by \"%s\" cipher");
         return -EINVAL;
+    }
 
     this->ivLength = EVP_CIPHER_iv_length(type);
 
@@ -190,7 +191,7 @@ int Cipher::sectorIVInit(struct SectorIV *ctx, const char *cipherName, const cha
             delete h;
             return r;
         }
-
+        ctx ->cipher = std::shared_ptr<Cipher>(new Cipher());
         r = ctx->cipher->init(cipherName, "ecb", tmp, hash_size);
         backendMemzero(tmp, sizeof(tmp));
         if (r) {
@@ -206,6 +207,7 @@ int Cipher::sectorIVInit(struct SectorIV *ctx, const char *cipherName, const cha
         ctx->type = IV_BENBI;
         ctx->shift = SECTOR_SHIFT - log;
     } else if (!strncasecmp(iv_name, "eboiv", 5)) {
+        ctx ->cipher = std::shared_ptr<Cipher>(new Cipher());
         r = ctx->cipher->init(cipherName, "ecb", key, keyLength);
         if (r) {
             return r;

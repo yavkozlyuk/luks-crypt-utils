@@ -8,6 +8,7 @@ LuksStorage::~LuksStorage() {
     Cipher::sectorIVDestroy(&this->cipherIV);
     if (this->cipher) {
         delete cipher;
+        this->cipher = NULL;
     }
 }
 
@@ -30,15 +31,12 @@ int LuksStorage::init(size_t sector_size, const char *cipher, const char *cipher
     this->cipher = new Cipher();
     r = this->cipher->init(cipher, mode_name, key->getKey(), key->getKeySize());
     if (r) {
-        //todo destroy
-        //crypt_storage_destroy(s);
         return r;
     }
 
     r = Cipher::sectorIVInit(&this->cipherIV, cipher, mode_name, cipher_iv, key->getKey(), key->getKeySize(),
                              sector_size);
-    if (r) {        //todo destroy
-        //crypt_storage_destroy(s);
+    if (r) {
         return r;
     }
 
